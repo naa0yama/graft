@@ -1,13 +1,13 @@
-# gh-sync
+# graft
 
-![coverage](https://raw.githubusercontent.com/naa0yama/gh-sync/badges/coverage.svg)
-![test execution time](https://raw.githubusercontent.com/naa0yama/gh-sync/badges/time.svg)
+![coverage](https://raw.githubusercontent.com/naa0yama/graft/badges/coverage.svg)
+![test execution time](https://raw.githubusercontent.com/naa0yama/graft/badges/time.svg)
 
 upstream テンプレートリポジトリから downstream リポジトリへファイルを同期する CLI ツール
 
 ## 概要
 
-`gh-sync` は `boilerplate-rust` などのテンプレートリポジトリで管理されているファイルを、
+`graft` は `boilerplate-rust` などのテンプレートリポジトリで管理されているファイルを、
 downstream (fork) リポジトリへ pull 型で同期する Rust 製 CLI です。
 `GITHUB_TOKEN` のみで動作し、GitHub App や PAT は不要です。
 
@@ -25,7 +25,7 @@ downstream (fork) リポジトリへ pull 型で同期する Rust 製 CLI です
 
 ```bash
 git clone <repository-url>
-cd gh-sync
+cd graft
 ```
 
 2. VS Code でプロジェクトを開く:
@@ -38,12 +38,12 @@ code .
 
 ## GitHub Action として使う
 
-`uses: naa0yama/gh-sync@<tag>` で下流リポジトリの CI に組み込めます。
+`uses: naa0yama/graft@<tag>` で下流リポジトリの CI に組み込めます。
 マニフェストのスキーマ検証 → リポジトリ設定のドリフト検知 → ファイルのドリフト検知を順に実行します。
 
 ```yaml
-# .github/workflows/gh-sync.yaml
-name: gh-sync check
+# .github/workflows/graft.yaml
+name: graft check
 on:
   push:
     branches: [main]
@@ -56,8 +56,8 @@ on:
 permissions: {}
 
 jobs:
-  gh-sync-check:
-    name: gh-sync-check
+  graft-check:
+    name: graft-check
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -66,32 +66,32 @@ jobs:
       - uses: actions/checkout@<sha> # vX.Y.Z
         with:
           persist-credentials: false
-      - uses: naa0yama/gh-sync@v0.1.5
+      - uses: naa0yama/graft@v0.1.5
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
-`gh-sync init --downstream --repo naa0yama/boilerplate-rust --with-skill` を実行すると、このワークフロー雛形を `.github/workflows/gh-sync.yaml` として自動生成できます。
+`graft init --downstream --repo naa0yama/boilerplate-rust --with-skill` を実行すると、このワークフロー雛形を `.github/workflows/graft.yaml` として自動生成できます。
 
 マニフェストを upstream リポジトリから取得して使う場合は `upstream-manifest` を指定します。
 ローカルの `manifest` ファイルが存在すれば、同じ `path` のルールで local が上書き (local overlay) されます。
 
 ```yaml
-- uses: naa0yama/gh-sync@v0.1.5
+- uses: naa0yama/graft@v0.1.5
   with:
     token: ${{ secrets.GITHUB_TOKEN }}
-    upstream-manifest: naa0yama/boilerplate-rust@main:.github/gh-sync/config.yaml
-    # manifest: .github/gh-sync/config.yaml  # local overlay (省略可)
+    upstream-manifest: naa0yama/boilerplate-rust@main:.github/graft/config.yaml
+    # manifest: .github/graft/config.yaml  # local overlay (省略可)
 ```
 
 ### inputs
 
-| name                | required | default                       | 説明                                                                         |
-| ------------------- | :------: | ----------------------------- | ---------------------------------------------------------------------------- |
-| `token`             |   yes    | —                             | `gh` CLI 用トークン。`${{ secrets.GITHUB_TOKEN }}` を推奨                    |
-| `version`           |    no    | `github.action_ref`           | ダウンロードするリリースタグ。SHA pin の場合は明示指定が必要                 |
-| `manifest`          |    no    | `.github/gh-sync/config.yaml` | 同期設定ファイルのパス                                                       |
-| `upstream-manifest` |    no    | —                             | upstream マニフェスト参照。`owner/repo@ref:path` 形式。local との merge も可 |
+| name                | required | default                     | 説明                                                                         |
+| ------------------- | :------: | --------------------------- | ---------------------------------------------------------------------------- |
+| `token`             |   yes    | —                           | `gh` CLI 用トークン。`${{ secrets.GITHUB_TOKEN }}` を推奨                    |
+| `version`           |    no    | `github.action_ref`         | ダウンロードするリリースタグ。SHA pin の場合は明示指定が必要                 |
+| `manifest`          |    no    | `.github/graft/config.yaml` | 同期設定ファイルのパス                                                       |
+| `upstream-manifest` |    no    | —                           | upstream マニフェスト参照。`owner/repo@ref:path` 形式。local との merge も可 |
 
 ## 使い方
 
@@ -139,7 +139,7 @@ mise run pre-commit       # clean:sweep + fmt:check + clippy:strict + ast-grep +
 │   └── pre-push                # プッシュ前チェック
 ├── .github/                    # GitHub Actions & 設定
 │   ├── actions/                # カスタムアクション
-│   ├── gh-sync/                # テンプレート同期設定
+│   ├── graft/                # テンプレート同期設定
 │   │   └── config.yaml         # 同期マニフェスト
 │   ├── workflows/              # CI/CD ワークフロー
 │   ├── labeler.yml
@@ -153,14 +153,14 @@ mise run pre-commit       # clean:sweep + fmt:check + clippy:strict + ast-grep +
 │   └── settings.json           # ワークスペース設定
 ├── ast-rules/                  # ast-grep プロジェクトルール
 ├── crates/                     # ワークスペースクレート (3クレート構成)
-│   ├── gh-sync-manifest/       # 純粋データ型・スキーマ (I/O なし、Miri 対応)
+│   ├── graft-manifest/       # 純粋データ型・スキーマ (I/O なし、Miri 対応)
 │   │   ├── src/
 │   │   │   ├── error.rs        # バリデーションエラー型
 │   │   │   ├── manifest.rs     # マニフェストスキーマ・ロード・バリデーション
 │   │   │   ├── strategy.rs     # 戦略結果型
 │   │   │   └── lib.rs
 │   │   └── Cargo.toml
-│   ├── gh-sync-engine/         # ビジネスロジック・トレイト (外部バイナリ I/O なし、Miri 対応)
+│   ├── graft-engine/         # ビジネスロジック・トレイト (外部バイナリ I/O なし、Miri 対応)
 │   │   ├── src/
 │   │   │   ├── diff.rs         # unified diff 生成
 │   │   │   ├── mode/           # sync / validate / ci-check / patch-refresh モード
@@ -170,7 +170,7 @@ mise run pre-commit       # clean:sweep + fmt:check + clippy:strict + ast-grep +
 │   │   │   ├── upstream.rs     # upstream フェッチャートレイト
 │   │   │   └── lib.rs
 │   │   └── Cargo.toml
-│   └── gh-sync/                # CLI バイナリクレート (gh-sync-manifest + gh-sync-engine を利用)
+│   └── graft/                # CLI バイナリクレート (graft-manifest + graft-engine を利用)
 │       ├── src/
 │       │   ├── main.rs         # アプリケーションのエントリーポイント
 │       │   ├── sync/           # テンプレート同期サブコマンド
@@ -188,7 +188,7 @@ mise run pre-commit       # clean:sweep + fmt:check + clippy:strict + ast-grep +
 ├── .gitignore                  # Git 除外設定
 ├── .octocov.yml                # カバレッジレポート設定
 ├── .tagpr                      # タグ & リリース設定
-├── action.yml                  # GitHub Action 定義 (naa0yama/gh-sync として利用可)
+├── action.yml                  # GitHub Action 定義 (naa0yama/graft として利用可)
 ├── Cargo.lock                  # 依存関係のロックファイル
 ├── Cargo.toml                  # ワークスペース設定と共有依存関係
 ├── deny.toml                   # cargo-deny 設定
@@ -248,4 +248,4 @@ OpenObserve Enterprise Edition は [EULA (End User License Agreement)](https://o
 RUST_LOG=trace RUST_BACKTRACE=1 cargo run -- sync --help
 ```
 
-`RUST_LOG=gh_sync=debug` 以上でログを有効にすると、`GH_DEBUG=api` が `gh` CLI に自動伝搬され、GitHub API の HTTP リクエスト/レスポンスが stderr に出力されます。
+`RUST_LOG=graft=debug` 以上でログを有効にすると、`GH_DEBUG=api` が `gh` CLI に自動伝搬され、GitHub API の HTTP リクエスト/レスポンスが stderr に出力されます。

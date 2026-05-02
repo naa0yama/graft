@@ -1,5 +1,5 @@
 # yaml-language-server: $schema=https://www.schemastore.org/github-action.json
-name: gh-sync
+name: graft
 description: Template sync CLI for pulling upstream files into downstream repos
 author: naa0yama
 branding:
@@ -15,9 +15,9 @@ inputs:
     required: false
     default: ${{ github.action_ref }}
   manifest:
-    description: Path to the gh-sync manifest file
+    description: Path to the graft manifest file
     required: false
-    default: .github/gh-sync/config.yaml
+    default: .github/graft/config.yaml
   upstream-manifest:
     description: >
       Upstream manifest reference in owner/repo@ref:path format.
@@ -26,7 +26,7 @@ inputs:
     required: false
   token:
     description: >
-      GitHub token for gh release download and for the gh CLI inside gh-sync.
+      GitHub token for gh release download and for the gh CLI inside graft.
       Pass secrets.GITHUB_TOKEN or a PAT with repo read scope.
     required: true
   apply-files:
@@ -37,9 +37,9 @@ inputs:
     default: "false"
   install-only:
     description: >
-      When true, only install the gh-sync binary and prepend it to PATH.
+      When true, only install the graft binary and prepend it to PATH.
       Skip manifest validation, drift checks, and apply-files. Useful when
-      you want to invoke gh-sync subcommands directly from subsequent steps.
+      you want to invoke graft subcommands directly from subsequent steps.
     required: false
     default: "false"
 
@@ -75,7 +75,7 @@ runs:
         # When SHA-pinned, github.action_ref is a commit SHA, not a tag.
         # gh release download needs a tag, so reverse-lookup via tags API.
         if [[ "${VERSION}" =~ ^[0-9a-f]{40}$ ]]; then
-          TAG=$(gh api repos/naa0yama/gh-sync/tags --paginate \
+          TAG=$(gh api repos/naa0yama/graft/tags --paginate \
             --jq ".[] | select(.commit.sha==\"${VERSION}\") | .name" \
             | head -n 1)
           if [[ -z "${TAG}" ]]; then
@@ -86,7 +86,7 @@ runs:
         fi
         echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
 
-    - name: Download gh-sync binary
+    - name: Download graft binary
       shell: bash
       env:
         GH_TOKEN: ${{ inputs.token }}
@@ -94,17 +94,17 @@ runs:
         TRIPLE: ${{ steps.target.outputs.triple }}
       run: | # zizmor: ignore[github-env] BIN_DIR derives from RUNNER_TEMP (trusted runner var)
         set -euo pipefail
-        DEST="${RUNNER_TEMP}/gh-sync"
+        DEST="${RUNNER_TEMP}/graft"
         mkdir -p "${DEST}"
 
         if [[ "${RUNNER_OS}" == "Windows" ]]; then
-          ASSET="gh-sync-${VERSION}-${TRIPLE}.zip"
+          ASSET="graft-${VERSION}-${TRIPLE}.zip"
         else
-          ASSET="gh-sync-${VERSION}-${TRIPLE}.tar.gz"
+          ASSET="graft-${VERSION}-${TRIPLE}.tar.gz"
         fi
 
         gh release download "${VERSION}" \
-          --repo naa0yama/gh-sync \
+          --repo naa0yama/graft \
           --pattern "${ASSET}" \
           --pattern "SHA256SUMS" \
           --dir "${DEST}"
@@ -127,9 +127,9 @@ runs:
         BIN_DIR="${DEST}/bin"
         mkdir -p "${BIN_DIR}"
         if [[ "${RUNNER_OS}" == "Windows" ]]; then
-          mv gh-sync.exe "${BIN_DIR}/"
+          mv graft.exe "${BIN_DIR}/"
         else
-          mv gh-sync "${BIN_DIR}/"
+          mv graft "${BIN_DIR}/"
         fi
         echo "${BIN_DIR}" >> "$GITHUB_PATH"
 
@@ -146,7 +146,7 @@ runs:
         if [[ -n "${UPSTREAM_MANIFEST}" ]]; then
           ARGS+=(--upstream-manifest "${UPSTREAM_MANIFEST}")
         fi
-        gh-sync sync file "${ARGS[@]}"
+        graft sync file "${ARGS[@]}"
 
     - name: Drift check — repo settings
       if: inputs.install-only != 'true' && inputs.apply-files != 'true'
@@ -161,7 +161,7 @@ runs:
         if [[ -n "${UPSTREAM_MANIFEST}" ]]; then
           ARGS+=(--upstream-manifest "${UPSTREAM_MANIFEST}")
         fi
-        gh-sync sync repo "${ARGS[@]}"
+        graft sync repo "${ARGS[@]}"
 
     - name: Drift check — files
       if: inputs.install-only != 'true' && inputs.apply-files != 'true'
@@ -176,7 +176,7 @@ runs:
         if [[ -n "${UPSTREAM_MANIFEST}" ]]; then
           ARGS+=(--upstream-manifest "${UPSTREAM_MANIFEST}")
         fi
-        gh-sync sync file "${ARGS[@]}"
+        graft sync file "${ARGS[@]}"
 
     - name: Apply file sync
       if: inputs.install-only != 'true' && inputs.apply-files == 'true'
@@ -191,4 +191,4 @@ runs:
         if [[ -n "${UPSTREAM_MANIFEST}" ]]; then
           ARGS+=(--upstream-manifest "${UPSTREAM_MANIFEST}")
         fi
-        gh-sync sync file "${ARGS[@]}"
+        graft sync file "${ARGS[@]}"
