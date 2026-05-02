@@ -244,7 +244,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "gh-sync"
+name = "graft"
 version = "0.3.7"
 dependencies = [
  "anyhow",
@@ -252,8 +252,8 @@ dependencies = [
  "clap",
  "console",
  "dialoguer",
- "gh-sync-engine",
- "gh-sync-manifest",
+ "graft-engine",
+ "graft-manifest",
  "predicates",
  "serde",
  "serde_json",
@@ -265,12 +265,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "gh-sync-engine"
+name = "graft-engine"
 version = "0.3.7"
 dependencies = [
  "anyhow",
  "console",
- "gh-sync-manifest",
+ "graft-manifest",
  "serde",
  "serde_json",
  "tempfile",
@@ -278,7 +278,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "gh-sync-manifest"
+name = "graft-manifest"
 version = "0.3.7"
 dependencies = [
  "anyhow",

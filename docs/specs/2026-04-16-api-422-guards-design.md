@@ -2,7 +2,7 @@
 
 ## Problem
 
-`gh-sync sync repo` can produce HTTP 422 (Validation Failed) errors from the
+`graft sync repo` can produce HTTP 422 (Validation Failed) errors from the
 GitHub API when the PATCH payload contains field combinations that GitHub
 rejects. One case (disabling a merge method while changing its title/message
 fields in the same request) was fixed in a prior commit. This spec covers the
@@ -28,7 +28,7 @@ remaining high-priority cases.
 ## Approach
 
 All three fixes are added to `validate_schema()` in
-`crates/gh-sync-manifest/src/manifest.rs`. This function already runs before
+`crates/graft-manifest/src/manifest.rs`. This function already runs before
 any API call, returns structured `ValidationError` items, and is covered by
 existing tests — making it the lowest-risk insertion point.
 
@@ -39,7 +39,7 @@ method guard fits naturally as a spec-level constraint).
 
 ### Task 1 — All merge methods disabled (Issue #1)
 
-File: `crates/gh-sync-manifest/src/manifest.rs` — `validate_schema()`
+File: `crates/graft-manifest/src/manifest.rs` — `validate_schema()`
 
 If `merge_strategy` has all three of `allow_merge_commit`,
 `allow_squash_merge`, and `allow_rebase_merge` explicitly set to `false`,
@@ -49,7 +49,7 @@ push a `ValidationError::top_level` on field
 
 ### Task 2 — `allowed_actions` constraints (Issues #3 and #4)
 
-File: `crates/gh-sync-manifest/src/manifest.rs` — `validate_schema()`
+File: `crates/graft-manifest/src/manifest.rs` — `validate_schema()`
 
 **Issue #4 (invalid value):** If `actions.allowed_actions` is present but
 not one of `"all"`, `"local_only"`, `"selected"`, push a
@@ -63,7 +63,7 @@ not one of `"all"`, `"local_only"`, `"selected"`, push a
 ## Testing Strategy
 
 Each new validation path gets at least two unit tests in
-`crates/gh-sync-manifest/src/manifest.rs` (inline `#[cfg(test)]` block):
+`crates/graft-manifest/src/manifest.rs` (inline `#[cfg(test)]` block):
 
 - One test that triggers the new error.
 - One test that confirms a valid spec passes.

@@ -8,19 +8,19 @@
 			"type": "lldb",
 			"request": "launch",
 			// gh-sync:keep-start
-			"name": "Debug executable 'gh-sync'",
+			"name": "Debug executable 'graft'",
 			// gh-sync:keep-end
 			"cargo": {
 				"args": [
 					"build",
 					// gh-sync:keep-start
-					"--bin=gh-sync",
-					"--package=gh-sync"
+					"--bin=graft",
+					"--package=graft"
 					// gh-sync:keep-end
 				],
 				"filter": {
 					// gh-sync:keep-start
-					"name": "gh-sync",
+					"name": "graft",
 					// gh-sync:keep-end
 					"kind": "bin"
 				}
@@ -32,20 +32,20 @@
 			"type": "lldb",
 			"request": "launch",
 			// gh-sync:keep-start
-			"name": "Debug unit tests in executable 'gh-sync'",
+			"name": "Debug unit tests in executable 'graft'",
 			// gh-sync:keep-end
 			"cargo": {
 				"args": [
 					"test",
 					"--no-run",
 					// gh-sync:keep-start
-					"--bin=gh-sync",
-					"--package=gh-sync"
+					"--bin=graft",
+					"--package=graft"
 					// gh-sync:keep-end
 				],
 				"filter": {
 					// gh-sync:keep-start
-					"name": "gh-sync",
+					"name": "graft",
 					// gh-sync:keep-end
 					"kind": "bin"
 				}

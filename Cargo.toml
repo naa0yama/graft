@@ -3,11 +3,11 @@
 # -
 [workspace]
 resolver = "3"
-# gh-sync:keep-start
+# graft:keep-start
 members = [
-	"crates/gh-sync",
-	"crates/gh-sync-engine",
-	"crates/gh-sync-manifest",
+	"crates/graft",
+	"crates/graft-engine",
+	"crates/graft-manifest",
 ]
 
 [workspace.package]
@@ -15,18 +15,18 @@ version = "0.3.7"
 edition = "2024"
 license = "AGPL-3.0-only"
 repository = "https://github.com/naa0yama/boilerplate-rust"
-# gh-sync:keep-end
+# graft:keep-end
 
 # - -------------------------------------------------------------------------------------------------
 # - Dependencies
 # -
 [workspace.dependencies]
-# gh-sync:keep-start
+# graft:keep-start
 # Project-specific dependencies are listed here.
 
 # Internal crates
-gh-sync-engine = { path = "crates/gh-sync-engine" }
-gh-sync-manifest = { path = "crates/gh-sync-manifest" }
+graft-engine = { path = "crates/graft-engine" }
+graft-manifest = { path = "crates/graft-manifest" }
 
 ## Core
 clap = { version = "4.5.45", default-features = false, features = ["std", "derive", "help", "usage", "error-context", "color", "suggestions"] }
@@ -41,7 +41,7 @@ console = "0.16"
 dialoguer = "0.12"
 similar = "3.0"
 
-# gh-sync:keep-end
+# graft:keep-end
 
 ## Core
 anyhow = "1.0"
