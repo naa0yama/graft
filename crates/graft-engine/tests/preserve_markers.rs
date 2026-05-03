@@ -43,7 +43,7 @@ fn marker_local_only_block_excluded_from_patch() {
     let dir = tempfile::tempdir().unwrap();
     let upstream_bytes = b"[workspace.dependencies]\nanyhow = \"1.0\"\n";
     // local = upstream content + a marker block; the block is local-only
-    let local_bytes = b"[workspace.dependencies]\nanyhow = \"1.0\"\n# gh-sync:keep-start\ngh-sync-engine = { version = \"0.2.1\" }\n# gh-sync:keep-end\n";
+    let local_bytes = b"[workspace.dependencies]\nanyhow = \"1.0\"\n# graft:keep-start\nmy-crate = { version = \"0.2.1\" }\n# graft:keep-end\n";
     std::fs::write(dir.path().join("Cargo.toml"), local_bytes).unwrap();
     let manifest = make_manifest("Cargo.toml", Some(true));
     let fetcher = MockFetcher::content(upstream_bytes.to_vec());
@@ -86,7 +86,7 @@ fn marker_version_drift_excluded_from_patch() {
     // local = upstream line (outside marker) + drifted line inside marker
     // (synthetic byte-level test; not representable as valid TOML)
     let local_bytes =
-        b"version = \"0.1.0\"\n# gh-sync:keep-start\nversion = \"0.2.1\"\n# gh-sync:keep-end\n";
+        b"version = \"0.1.0\"\n# graft:keep-start\nversion = \"0.2.1\"\n# graft:keep-end\n";
     std::fs::write(dir.path().join("Cargo.toml"), local_bytes).unwrap();
     let manifest = make_manifest("Cargo.toml", Some(true));
     let fetcher = MockFetcher::content(upstream_bytes.to_vec());
@@ -120,9 +120,9 @@ fn marker_external_drift_included_in_patch() {
     // Arrange
     let dir = tempfile::tempdir().unwrap();
     let upstream_bytes =
-        b"# gh-sync:keep-start\nversion = \"0.1.0\"\n# gh-sync:keep-end\nanyhow = \"1.0\"\n";
+        b"# graft:keep-start\nversion = \"0.1.0\"\n# graft:keep-end\nanyhow = \"1.0\"\n";
     let local_bytes =
-        b"# gh-sync:keep-start\nversion = \"0.2.1\"\n# gh-sync:keep-end\nanyhow = \"2.0\"\n";
+        b"# graft:keep-start\nversion = \"0.2.1\"\n# graft:keep-end\nanyhow = \"2.0\"\n";
     std::fs::write(dir.path().join("Cargo.toml"), local_bytes).unwrap();
     let manifest = make_manifest("Cargo.toml", Some(true));
     let fetcher = MockFetcher::content(upstream_bytes.to_vec());
@@ -155,9 +155,9 @@ fn upstream_and_local_both_have_markers_patch_excludes_marker_regions() {
     // Arrange — upstream template has a marker placeholder, local fills it in differently
     let dir = tempfile::tempdir().unwrap();
     let upstream_bytes =
-        b"# gh-sync:keep-start\nmembers = [\"crates/brust\"]\n# gh-sync:keep-end\nanyhow = \"1.0\"\n";
+        b"# graft:keep-start\nmembers = [\"crates/brust\"]\n# graft:keep-end\nanyhow = \"1.0\"\n";
     let local_bytes =
-        b"# gh-sync:keep-start\nmembers = [\"crates/gh-sync\"]\n# gh-sync:keep-end\nanyhow = \"1.0\"\n";
+        b"# graft:keep-start\nmembers = [\"crates/downstream\"]\n# graft:keep-end\nanyhow = \"1.0\"\n";
     std::fs::write(dir.path().join("Cargo.toml"), local_bytes).unwrap();
     let manifest = make_manifest("Cargo.toml", Some(true));
     let fetcher = MockFetcher::content(upstream_bytes.to_vec());
@@ -186,9 +186,9 @@ fn upstream_and_local_markers_with_external_drift_patch_non_empty() {
     // Arrange
     let dir = tempfile::tempdir().unwrap();
     let upstream_bytes =
-        b"# gh-sync:keep-start\nmembers = [\"crates/brust\"]\n# gh-sync:keep-end\nanyhow = \"1.0\"\n";
+        b"# graft:keep-start\nmembers = [\"crates/brust\"]\n# graft:keep-end\nanyhow = \"1.0\"\n";
     let local_bytes =
-        b"# gh-sync:keep-start\nmembers = [\"crates/gh-sync\"]\n# gh-sync:keep-end\nanyhow = \"2.0\"\n";
+        b"# graft:keep-start\nmembers = [\"crates/downstream\"]\n# graft:keep-end\nanyhow = \"2.0\"\n";
     std::fs::write(dir.path().join("Cargo.toml"), local_bytes).unwrap();
     let manifest = make_manifest("Cargo.toml", Some(true));
     let fetcher = MockFetcher::content(upstream_bytes.to_vec());
@@ -223,7 +223,7 @@ fn upstream_and_local_markers_with_external_drift_patch_non_empty() {
 fn upstream_orphan_marker_fails() {
     // Arrange
     let dir = tempfile::tempdir().unwrap();
-    let upstream_bytes = b"# gh-sync:keep-start\nmembers = [\"crates/brust\"]\n";
+    let upstream_bytes = b"# graft:keep-start\nmembers = [\"crates/brust\"]\n";
     let local_bytes = b"anyhow = \"1.0\"\n";
     std::fs::write(dir.path().join("Cargo.toml"), local_bytes).unwrap();
     let manifest = make_manifest("Cargo.toml", Some(true));
@@ -250,7 +250,7 @@ fn upstream_orphan_marker_fails() {
 fn orphan_start_marker_fails_with_unbalanced() {
     // Arrange
     let dir = tempfile::tempdir().unwrap();
-    let local_bytes = b"anyhow = \"1.0\"\n# gh-sync:keep-start\nversion = \"0.2.1\"\n";
+    let local_bytes = b"anyhow = \"1.0\"\n# graft:keep-start\nversion = \"0.2.1\"\n";
     std::fs::write(dir.path().join("Cargo.toml"), local_bytes).unwrap();
     let manifest = make_manifest("Cargo.toml", Some(true));
     let fetcher = MockFetcher::content(b"anyhow = \"1.0\"\n".to_vec());
@@ -276,7 +276,8 @@ fn orphan_start_marker_fails_with_unbalanced() {
 fn nested_start_marker_fails_with_nested() {
     // Arrange
     let dir = tempfile::tempdir().unwrap();
-    let local_bytes = b"# gh-sync:keep-start\n# gh-sync:keep-start\ninner\n# gh-sync:keep-end\n# gh-sync:keep-end\n";
+    let local_bytes =
+        b"# graft:keep-start\n# graft:keep-start\ninner\n# graft:keep-end\n# graft:keep-end\n";
     std::fs::write(dir.path().join("Cargo.toml"), local_bytes).unwrap();
     let manifest = make_manifest("Cargo.toml", Some(true));
     let fetcher = MockFetcher::content(b"anyhow = \"1.0\"\n".to_vec());
@@ -304,7 +305,7 @@ fn preserve_markers_false_includes_marker_lines_in_patch() {
     // Arrange
     let dir = tempfile::tempdir().unwrap();
     let upstream_bytes = b"anyhow = \"1.0\"\n";
-    let local_bytes = b"# gh-sync:keep-start\nanyhow = \"1.0\"\n# gh-sync:keep-end\n";
+    let local_bytes = b"# graft:keep-start\nanyhow = \"1.0\"\n# graft:keep-end\n";
     std::fs::write(dir.path().join("Cargo.toml"), local_bytes).unwrap();
     let manifest = make_manifest("Cargo.toml", Some(false));
     let fetcher = MockFetcher::content(upstream_bytes.to_vec());

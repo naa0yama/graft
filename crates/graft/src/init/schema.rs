@@ -335,7 +335,7 @@ pub const SCHEMA_JSON: &str = r#"{
           },
           "preserve_markers": {
             "type": "boolean",
-            "description": "Preserve gh-sync:keep-start/keep-end marker blocks from the local file. Only used when strategy is 'patch' or 'replace'."
+            "description": "Preserve graft:keep-start/keep-end marker blocks from the local file. Only used when strategy is 'patch' or 'replace'."
           }
         }
       }

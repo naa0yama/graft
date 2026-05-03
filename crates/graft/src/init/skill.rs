@@ -33,24 +33,24 @@ from being overwritten during template sync.
 
 ## Marker Syntax
 
-Enclose downstream-specific lines between `gh-sync:keep-start` and
-`gh-sync:keep-end` tokens. The comment character (`#`, `//`, etc.) is
+Enclose downstream-specific lines between `graft:keep-start` and
+`graft:keep-end` tokens. The comment character (`#`, `//`, etc.) is
 irrelevant — only the token presence in the line is checked.
 
 TOML / YAML / shell (`#` comment style):
 
 ```toml
-# gh-sync:keep-start
+# graft:keep-start
 version = \"0.3.0\"
-# gh-sync:keep-end
+# graft:keep-end
 ```
 
 JSON / JSONC (`//` comment style):
 
 ```jsonc
-// gh-sync:keep-start
+// graft:keep-start
 \"name\": \"my-downstream-project\"
-// gh-sync:keep-end
+// graft:keep-end
 ```
 
 ## Enabling in the Manifest
@@ -94,28 +94,28 @@ top of the upstream content.
 
 ```toml
 [workspace.package]
-# gh-sync:keep-start
+# graft:keep-start
 version = \"0.2.1\"
-# gh-sync:keep-end
+# graft:keep-end
 ```
 
 ### mise.toml — environment variable overrides
 
 ```toml
 [env]
-# gh-sync:keep-start
+# graft:keep-start
 RUST_LOG = \"warn,graft=trace\"
-# gh-sync:keep-end
+# graft:keep-end
 ```
 
 ### .vscode/launch.json — project-specific launch configuration
 
 ```jsonc
 {
-  // gh-sync:keep-start
+  // graft:keep-start
   \"name\": \"my-binary\",
   \"cargo\": { \"args\": [\"build\", \"--bin\", \"my-binary\"] }
-  // gh-sync:keep-end
+  // graft:keep-end
 }
 ```
 
@@ -154,11 +154,8 @@ mod tests {
     #[test]
     fn render_contains_marker_tokens() {
         let out = render();
-        assert!(
-            out.contains("gh-sync:keep-start"),
-            "missing keep-start token"
-        );
-        assert!(out.contains("gh-sync:keep-end"), "missing keep-end token");
+        assert!(out.contains("graft:keep-start"), "missing keep-start token");
+        assert!(out.contains("graft:keep-end"), "missing keep-end token");
     }
 
     #[test]
@@ -174,11 +171,11 @@ mod tests {
     fn render_contains_both_comment_styles() {
         let out = render();
         assert!(
-            out.contains("# gh-sync:keep-start"),
+            out.contains("# graft:keep-start"),
             "missing # comment style"
         );
         assert!(
-            out.contains("// gh-sync:keep-start"),
+            out.contains("// graft:keep-start"),
             "missing // comment style"
         );
     }

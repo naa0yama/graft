@@ -47,7 +47,7 @@ pub trait PatchRunner {
 /// `local` to determine whether a write is needed.
 ///
 /// When `preserve_markers` is `true`, marker blocks enclosed by
-/// `gh-sync:keep-start` / `gh-sync:keep-end` comments are stripped from both
+/// `graft:keep-start` / `graft:keep-end` comments are stripped from both
 /// `upstream` and `local` before the patch is applied and before drift
 /// comparison, so marker content is excluded from drift detection.
 /// When the patched result is written back, the marker blocks to re-insert
@@ -252,12 +252,12 @@ mod tests {
     fn preserve_markers_upstream_markers_propagated_when_local_none() {
         // upstream has a marker block; patched result has none; local is None.
         // Expected: Changed with upstream markers inserted into the patched output.
-        let upstream = b"a = 1\n# gh-sync:keep-start\nb = upstream\n# gh-sync:keep-end\n";
+        let upstream = b"a = 1\n# graft:keep-start\nb = upstream\n# graft:keep-end\n";
         // strip upstream markers before patching (mirrors the real behaviour)
         let patched_content = b"a = 1\n".to_vec();
         let runner = MockPatchRunner::success(patched_content);
         let result = apply(upstream, None, Path::new("x.patch"), &runner, true);
-        let expected = b"a = 1\n# gh-sync:keep-start\nb = upstream\n# gh-sync:keep-end\n";
+        let expected = b"a = 1\n# graft:keep-start\nb = upstream\n# graft:keep-end\n";
         assert!(
             matches!(result, StrategyResult::Changed { ref content } if content.as_slice() == expected),
             "expected Changed with upstream markers propagated: {result:?}"
@@ -268,12 +268,12 @@ mod tests {
     fn preserve_markers_upstream_markers_propagated_when_local_has_no_markers() {
         // upstream has markers; local has no markers; patched == stripped local.
         // Expected: Changed because marker blocks need to be inserted.
-        let upstream = b"a = 1\n# gh-sync:keep-start\nb = upstream\n# gh-sync:keep-end\n";
+        let upstream = b"a = 1\n# graft:keep-start\nb = upstream\n# graft:keep-end\n";
         let local = b"a = 1\n";
         // patched equals local stripped (no diff outside markers)
         let runner = MockPatchRunner::success(b"a = 1\n".to_vec());
         let result = apply(upstream, Some(local), Path::new("x.patch"), &runner, true);
-        let expected = b"a = 1\n# gh-sync:keep-start\nb = upstream\n# gh-sync:keep-end\n";
+        let expected = b"a = 1\n# graft:keep-start\nb = upstream\n# graft:keep-end\n";
         assert!(
             matches!(result, StrategyResult::Changed { ref content } if content.as_slice() == expected),
             "expected Changed with upstream markers inserted: {result:?}"

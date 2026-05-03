@@ -396,7 +396,7 @@ pub struct Rule {
     /// Explicit patch file path (`patch` strategy only; defaults to convention).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub patch: Option<String>,
-    /// When `true`, lines enclosed by `gh-sync:keep-start` / `gh-sync:keep-end`
+    /// When `true`, lines enclosed by `graft:keep-start` / `graft:keep-end`
     /// marker comments are excluded from drift detection and preserved on write-back.
     /// Valid with `strategy: patch` or `strategy: replace`.
     #[serde(default, skip_serializing_if = "Option::is_none")]

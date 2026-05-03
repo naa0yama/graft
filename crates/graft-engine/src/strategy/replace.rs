@@ -85,7 +85,7 @@ mod tests {
     fn apply_with_markers_local_blocks_preserved_when_upstream_changed() {
         // Arrange: upstream has no markers; local wraps a value in a marker block.
         let upstream = b"a = upstream\n";
-        let local = b"a = upstream\n# gh-sync:keep-start\nb = local\n# gh-sync:keep-end\n";
+        let local = b"a = upstream\n# graft:keep-start\nb = local\n# graft:keep-end\n";
         // After strip(upstream) = "a = upstream\n"; local blocks = the b=local block.
         // merged = "a = upstream\n" + block → same as local → Unchanged.
         let result = apply_with_markers(upstream, Some(local));
@@ -98,7 +98,7 @@ mod tests {
     #[test]
     fn apply_with_markers_changed_when_non_marker_differs() {
         let upstream = b"a = new\n";
-        let marker_block = b"# gh-sync:keep-start\nb = local\n# gh-sync:keep-end\n";
+        let marker_block = b"# graft:keep-start\nb = local\n# graft:keep-end\n";
         let local = [b"a = old\n".as_slice(), marker_block.as_slice()].concat();
         let result = apply_with_markers(upstream, Some(&local));
         // expected content = upstream + marker block
@@ -124,7 +124,7 @@ mod tests {
     #[test]
     fn apply_with_markers_unbalanced_local_returns_error() {
         let upstream = b"a = 1\n";
-        let local = b"# gh-sync:keep-start\na = 1\n"; // missing keep-end
+        let local = b"# graft:keep-start\na = 1\n"; // missing keep-end
         let result = apply_with_markers(upstream, Some(local));
         assert!(
             matches!(result, StrategyResult::Error(ref msg) if msg.contains("local")),
@@ -136,7 +136,7 @@ mod tests {
     fn apply_with_markers_upstream_markers_propagated_when_local_none() {
         // upstream has a marker block; local is None (first sync).
         // Expected: upstream marker block is preserved in the output.
-        let upstream = b"a = 1\n# gh-sync:keep-start\nb = upstream\n# gh-sync:keep-end\n";
+        let upstream = b"a = 1\n# graft:keep-start\nb = upstream\n# graft:keep-end\n";
         let result = apply_with_markers(upstream, None);
         assert!(
             matches!(result, StrategyResult::Changed { ref content } if content == upstream),
@@ -148,7 +148,7 @@ mod tests {
     fn apply_with_markers_upstream_markers_propagated_when_local_has_no_markers() {
         // upstream has a marker block; local has the upstream content but no markers.
         // Expected: Changed with upstream markers inserted.
-        let upstream = b"a = 1\n# gh-sync:keep-start\nb = upstream\n# gh-sync:keep-end\n";
+        let upstream = b"a = 1\n# graft:keep-start\nb = upstream\n# graft:keep-end\n";
         let local = b"a = 1\n";
         let result = apply_with_markers(upstream, Some(local));
         assert!(
@@ -161,7 +161,7 @@ mod tests {
     fn apply_with_markers_idempotent_after_upstream_marker_propagation() {
         // After the first sync propagates upstream markers to local, a second sync
         // with the same upstream must produce Unchanged.
-        let upstream = b"a = 1\n# gh-sync:keep-start\nb = upstream\n# gh-sync:keep-end\n";
+        let upstream = b"a = 1\n# graft:keep-start\nb = upstream\n# graft:keep-end\n";
         // local now carries the marker block (as it would after the first sync).
         let local = upstream;
         let result = apply_with_markers(upstream, Some(local));
@@ -175,8 +175,8 @@ mod tests {
     fn apply_with_markers_local_markers_take_precedence_over_upstream() {
         // local has its own marker block content that differs from upstream.
         // Expected: local's marker block is preserved (not replaced by upstream).
-        let upstream = b"a = 1\n# gh-sync:keep-start\nb = upstream\n# gh-sync:keep-end\n";
-        let local = b"a = 1\n# gh-sync:keep-start\nb = local_custom\n# gh-sync:keep-end\n";
+        let upstream = b"a = 1\n# graft:keep-start\nb = upstream\n# graft:keep-end\n";
+        let local = b"a = 1\n# graft:keep-start\nb = local_custom\n# graft:keep-end\n";
         let result = apply_with_markers(upstream, Some(local));
         assert!(
             matches!(result, StrategyResult::Unchanged),
@@ -186,7 +186,7 @@ mod tests {
 
     #[test]
     fn apply_with_markers_unbalanced_upstream_returns_error() {
-        let upstream = b"# gh-sync:keep-start\na = 1\n"; // missing keep-end
+        let upstream = b"# graft:keep-start\na = 1\n"; // missing keep-end
         let local = b"a = 1\n";
         let result = apply_with_markers(upstream, Some(local));
         assert!(

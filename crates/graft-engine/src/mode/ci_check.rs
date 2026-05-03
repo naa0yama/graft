@@ -525,7 +525,7 @@ mod tests {
         // Arrange: local has a marker block; upstream has no markers (just baseline).
         // After merge the expected = upstream_stripped + local_blocks = local → no drift.
         let dir = tempfile::tempdir().unwrap();
-        let marker_block = b"# gh-sync:keep-start\nb = local\n# gh-sync:keep-end\n";
+        let marker_block = b"# graft:keep-start\nb = local\n# graft:keep-end\n";
         let local_content = [b"a = 1\n".as_slice(), marker_block.as_slice()].concat();
         std::fs::write(dir.path().join("cfg.toml"), &local_content).unwrap();
 
@@ -557,7 +557,7 @@ mod tests {
     fn ci_check_replace_preserve_markers_reports_drift_when_non_marker_differs() {
         // Arrange: upstream changed; local has stale non-marker content.
         let dir = tempfile::tempdir().unwrap();
-        let marker_block = b"# gh-sync:keep-start\nb = local\n# gh-sync:keep-end\n";
+        let marker_block = b"# graft:keep-start\nb = local\n# graft:keep-end\n";
         let local_content = [b"a = old\n".as_slice(), marker_block.as_slice()].concat();
         std::fs::write(dir.path().join("cfg.toml"), &local_content).unwrap();
 
