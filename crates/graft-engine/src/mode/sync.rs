@@ -571,7 +571,7 @@ mod tests {
     fn sync_replace_preserve_markers_writes_merged_content() {
         // Arrange: local file has a marker block that should survive after sync.
         let dir = tempfile::tempdir().unwrap();
-        let marker_block = b"# gh-sync:keep-start\nb = local\n# gh-sync:keep-end\n";
+        let marker_block = b"# graft:keep-start\nb = local\n# graft:keep-end\n";
         let local_content = [b"a = old\n".as_slice(), marker_block.as_slice()].concat();
         std::fs::write(dir.path().join("cfg.toml"), &local_content).unwrap();
 

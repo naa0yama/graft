@@ -188,21 +188,20 @@ mod tests {
 
     #[test]
     fn strip_single_block_at_start() {
-        let input =
-            b"# gh-sync:keep-start\nversion = \"0.2.1\"\n# gh-sync:keep-end\nother = true\n";
+        let input = b"# graft:keep-start\nversion = \"0.2.1\"\n# graft:keep-end\nother = true\n";
         let (stripped, blocks) = strip_marker_blocks(input).unwrap();
         assert_eq!(stripped, b"other = true\n");
         assert_eq!(blocks.len(), 1);
         assert_eq!(blocks[0].position, 0);
         assert_eq!(
             blocks[0].content,
-            b"# gh-sync:keep-start\nversion = \"0.2.1\"\n# gh-sync:keep-end\n"
+            b"# graft:keep-start\nversion = \"0.2.1\"\n# graft:keep-end\n"
         );
     }
 
     #[test]
     fn strip_single_block_in_middle() {
-        let input = b"a = 1\nb = 2\n# gh-sync:keep-start\nc = 3\n# gh-sync:keep-end\nd = 4\n";
+        let input = b"a = 1\nb = 2\n# graft:keep-start\nc = 3\n# graft:keep-end\nd = 4\n";
         let (stripped, blocks) = strip_marker_blocks(input).unwrap();
         assert_eq!(stripped, b"a = 1\nb = 2\nd = 4\n");
         assert_eq!(blocks.len(), 1);
@@ -211,7 +210,7 @@ mod tests {
 
     #[test]
     fn strip_two_blocks() {
-        let input = b"# gh-sync:keep-start\nA\n# gh-sync:keep-end\nmid\n# gh-sync:keep-start\nB\n# gh-sync:keep-end\nend\n";
+        let input = b"# graft:keep-start\nA\n# graft:keep-end\nmid\n# graft:keep-start\nB\n# graft:keep-end\nend\n";
         let (stripped, blocks) = strip_marker_blocks(input).unwrap();
         assert_eq!(stripped, b"mid\nend\n");
         assert_eq!(blocks.len(), 2);
@@ -233,8 +232,7 @@ mod tests {
 
     #[test]
     fn merge_round_trips_single_block() {
-        let input =
-            b"# gh-sync:keep-start\nversion = \"0.2.1\"\n# gh-sync:keep-end\nother = true\n";
+        let input = b"# graft:keep-start\nversion = \"0.2.1\"\n# graft:keep-end\nother = true\n";
         let (stripped, blocks) = strip_marker_blocks(input).unwrap();
         let restored = merge_marker_blocks(&stripped, &blocks);
         assert_eq!(restored, input);
@@ -242,7 +240,7 @@ mod tests {
 
     #[test]
     fn merge_round_trips_two_blocks() {
-        let input = b"# gh-sync:keep-start\nA\n# gh-sync:keep-end\nmid\n# gh-sync:keep-start\nB\n# gh-sync:keep-end\nend\n";
+        let input = b"# graft:keep-start\nA\n# graft:keep-end\nmid\n# graft:keep-start\nB\n# graft:keep-end\nend\n";
         let (stripped, blocks) = strip_marker_blocks(input).unwrap();
         let restored = merge_marker_blocks(&stripped, &blocks);
         assert_eq!(restored, input);
@@ -261,20 +259,20 @@ mod tests {
 
     #[test]
     fn orphan_start_returns_unbalanced() {
-        let input = b"# gh-sync:keep-start\na = 1\n";
+        let input = b"# graft:keep-start\na = 1\n";
         assert_eq!(strip_marker_blocks(input), Err(MarkerError::Unbalanced));
     }
 
     #[test]
     fn orphan_end_returns_unbalanced() {
-        let input = b"a = 1\n# gh-sync:keep-end\n";
+        let input = b"a = 1\n# graft:keep-end\n";
         assert_eq!(strip_marker_blocks(input), Err(MarkerError::Unbalanced));
     }
 
     #[test]
     fn nested_start_returns_nested() {
         let input =
-            b"# gh-sync:keep-start\n# gh-sync:keep-start\ninner\n# gh-sync:keep-end\n# gh-sync:keep-end\n";
+            b"# graft:keep-start\n# graft:keep-start\ninner\n# graft:keep-end\n# graft:keep-end\n";
         assert_eq!(strip_marker_blocks(input), Err(MarkerError::Nested));
     }
 
@@ -291,10 +289,7 @@ mod tests {
 
     #[test]
     fn select_local_empty_returns_upstream() {
-        let upstream = vec![make_block(
-            0,
-            b"# gh-sync:keep-start\na\n# gh-sync:keep-end\n",
-        )];
+        let upstream = vec![make_block(0, b"# graft:keep-start\na\n# graft:keep-end\n")];
         let local: Vec<MarkerBlock> = vec![];
         let result = select_marker_blocks(upstream.clone(), local);
         assert_eq!(result, upstream);
@@ -304,11 +299,11 @@ mod tests {
     fn select_local_non_empty_returns_local() {
         let upstream = vec![make_block(
             0,
-            b"# gh-sync:keep-start\nupstream\n# gh-sync:keep-end\n",
+            b"# graft:keep-start\nupstream\n# graft:keep-end\n",
         )];
         let local = vec![make_block(
             0,
-            b"# gh-sync:keep-start\nlocal\n# gh-sync:keep-end\n",
+            b"# graft:keep-start\nlocal\n# graft:keep-end\n",
         )];
         let result = select_marker_blocks(upstream, local.clone());
         assert_eq!(result, local);
@@ -326,7 +321,7 @@ mod tests {
 
     #[test]
     fn jsonc_style_markers_are_recognised() {
-        let input = b"{\n// gh-sync:keep-start\n\"name\": \"gh-sync\"\n// gh-sync:keep-end\n}\n";
+        let input = b"{\n// graft:keep-start\n\"name\": \"my-project\"\n// graft:keep-end\n}\n";
         let (stripped, blocks) = strip_marker_blocks(input).unwrap();
         assert_eq!(stripped, b"{\n}\n");
         assert_eq!(blocks.len(), 1);
