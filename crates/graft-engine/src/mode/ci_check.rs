@@ -197,7 +197,7 @@ fn evaluate_drift(
                 };
 
             let expected = if rule.strategy == Strategy::Replace {
-                if rule.preserve_markers.unwrap_or(false) {
+                if rule.preserve_markers.unwrap_or(true) {
                     match strategy::replace::apply_with_markers(&upstream, local_bytes) {
                         StrategyResult::Changed { content } => content,
                         StrategyResult::Unchanged => {
@@ -220,7 +220,7 @@ fn evaluate_drift(
                     local_bytes,
                     &full_patch,
                     patch_runner,
-                    rule.preserve_markers.unwrap_or(false),
+                    rule.preserve_markers.unwrap_or(true),
                 ) {
                     StrategyResult::Changed { content } => content,
                     StrategyResult::Conflict { message } => {

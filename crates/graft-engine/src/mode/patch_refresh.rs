@@ -102,9 +102,12 @@ fn process_rule(
     };
 
     // old=upstream, new=local: patch applies upstream → local.
-    // When preserve_markers is true, strip marker blocks from both sides before
-    // diffing so that marker-protected regions on either side are excluded.
-    let (effective_upstream, effective_local) = if rule.preserve_markers == Some(true) {
+    // When preserve_markers is explicitly disabled (Some(false)), use raw bytes.
+    // Otherwise strip marker blocks from both sides before diffing so that
+    // marker-protected regions are excluded.
+    let (effective_upstream, effective_local) = if rule.preserve_markers == Some(false) {
+        (upstream, local_bytes)
+    } else {
         let up = match strip_markers(&upstream, "upstream") {
             Ok(s) => s,
             Err(msg) => {
@@ -120,8 +123,6 @@ fn process_rule(
             }
         };
         (up, lo)
-    } else {
-        (upstream, local_bytes)
     };
 
     let diff = match unified_diff(&rule.path, &effective_upstream, &effective_local) {

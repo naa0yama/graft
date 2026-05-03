@@ -295,7 +295,7 @@ fn nested_start_marker_fails_with_nested() {
 // Case 6 — preserve_markers disabled: marker lines treated as regular content
 // ---------------------------------------------------------------------------
 
-/// When `preserve_markers` is `None` (disabled), marker comment lines are
+/// When `preserve_markers` is `Some(false)` (explicitly disabled), marker comment lines are
 /// treated as ordinary content. If the local file has marker lines that the
 /// upstream does not, those lines appear in the patch as additions.
 #[cfg_attr(miri, ignore)]
@@ -306,7 +306,7 @@ fn preserve_markers_false_includes_marker_lines_in_patch() {
     let upstream_bytes = b"anyhow = \"1.0\"\n";
     let local_bytes = b"# gh-sync:keep-start\nanyhow = \"1.0\"\n# gh-sync:keep-end\n";
     std::fs::write(dir.path().join("Cargo.toml"), local_bytes).unwrap();
-    let manifest = make_manifest("Cargo.toml", None);
+    let manifest = make_manifest("Cargo.toml", Some(false));
     let fetcher = MockFetcher::content(upstream_bytes.to_vec());
     let mut buf: Vec<u8> = Vec::new();
 
