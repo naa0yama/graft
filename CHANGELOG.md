@@ -1,5 +1,11 @@
 # Changelog
 
+## [v0.4.1](https://github.com/naa0yama/graft/compare/v0.4.0...v0.4.1) - 2026-05-03
+### Features 🎉
+- refactor: migrate marker tokens from gh-sync:keep-* to graft:keep-* by @naa0yama in https://github.com/naa0yama/graft/pull/112
+### Development Environment 🔧
+- chore(deps): update dependency openobserve/openobserve to v0.80.0 by @renovate[bot] in https://github.com/naa0yama/graft/pull/114
+
 ## [v0.4.0](https://github.com/naa0yama/graft/compare/v0.3.7...v0.4.0) - 2026-05-03
 
 ### Features 🎉
