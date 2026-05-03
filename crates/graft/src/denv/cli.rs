@@ -10,6 +10,14 @@ pub struct DenvArgs {
 
 #[derive(Subcommand, Debug)]
 pub enum DenvCommand {
-    /// Manage Traefik reverse proxy and devcontainer lifecycle
+    /// Start devcontainer with Traefik routing
+    Up,
+    /// Stop and remove devcontainer, clean up routes
+    Down,
+    /// Attach to running devcontainer (starts if not running)
+    Exec,
+    /// List running devcontainers with Traefik FQDNs
+    Status,
+    /// Manage Traefik reverse proxy infrastructure
     Traefik(TraefikArgs),
 }

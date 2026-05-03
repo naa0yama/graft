@@ -12,16 +12,18 @@ downstream (fork) リポジトリへ pull 型で同期する Rust 製 CLI です
 `GITHUB_TOKEN` のみで動作し、GitHub App や PAT は不要です。
 
 `graft discover` を使うと、upstream テンプレートを使用している downstream リポジトリを
-自動検出できます。検出結果を使って downstream へ変更を一括配布する場合は
-`distribute-upstream` Claude スキルを利用します。
+自動検出できます。
 
-詳細は [`docs/specs/template-sync.ja.md`](docs/specs/template-sync.ja.md) を参照してください。
+詳細は [`docs/specs/graft/overview.ja.md`](docs/specs/graft/overview.ja.md) を参照してください。
+
+> **注意:** `.github/workflows/` 配下のファイルは GitHub のトークン制約により
+> `graft sync` で PR を作成できません。ワークフローファイルの同期には手動での対応が必要です。
 
 ## 必要要件
 
 - Docker
-- Visual Studio Code
-- VS Code Dev Containers 拡張機能
+- [mise](https://mise.jdx.dev/)
+- [devcontainer CLI](https://github.com/devcontainers/cli) (`npm install -g @devcontainers/cli`)
 
 ## セットアップ
 
@@ -32,70 +34,41 @@ git clone <repository-url>
 cd graft
 ```
 
-2. VS Code でプロジェクトを開く:
+2. プロジェクトをセットアップ:
 
 ```bash
-code .
+mise run setup
 ```
 
-3. VS Code のコマンドパレット (`Ctrl+Shift+P` / `Cmd+Shift+P`) から「Dev Containers: Reopen in Container」を選択
+3. devcontainer を起動:
 
-## GitHub Action として使う
-
-`uses: naa0yama/graft@<tag>` で下流リポジトリの CI に組み込めます。
-マニフェストのスキーマ検証 → リポジトリ設定のドリフト検知 → ファイルのドリフト検知を順に実行します。
-
-```yaml
-# .github/workflows/graft.yaml
-name: graft check
-on:
-  push:
-    branches: [main]
-  pull_request:
-    types: [opened, synchronize, reopened]
-  schedule:
-    - cron: "0 18 * * *" # daily at 03:00 JST
-  workflow_dispatch:
-
-permissions: {}
-
-jobs:
-  graft-check:
-    name: graft-check
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@<sha> # vX.Y.Z
-        with:
-          persist-credentials: false
-      - uses: naa0yama/graft@v0.1.5
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+```bash
+mise run dev:up
 ```
 
-`graft init --downstream --repo naa0yama/boilerplate-rust --with-skill` を実行すると、このワークフロー雛形を `.github/workflows/graft.yaml` として自動生成できます。
+`dev:up` は Traefik ルーティング付きで devcontainer を起動し、コンテナ内のシェルに接続します。
+コンテナ内で `claude` コマンドを使って開発を進めます。
 
-マニフェストを upstream リポジトリから取得して使う場合は `upstream-manifest` を指定します。
-ローカルの `manifest` ファイルが存在すれば、同じ `path` のルールで local が上書き (local overlay) されます。
+再接続する場合:
 
-```yaml
-- uses: naa0yama/graft@v0.1.5
-  with:
-    token: ${{ secrets.GITHUB_TOKEN }}
-    upstream-manifest: naa0yama/boilerplate-rust@main:.github/graft/config.yaml
-    # manifest: .github/graft/config.yaml  # local overlay (省略可)
+```bash
+mise run dev:exec
 ```
 
-### inputs
+### tmux pane 名の自動更新 (任意)
 
-| name                | required | default                     | 説明                                                                         |
-| ------------------- | :------: | --------------------------- | ---------------------------------------------------------------------------- |
-| `token`             |   yes    | —                           | `gh` CLI 用トークン。`${{ secrets.GITHUB_TOKEN }}` を推奨                    |
-| `version`           |    no    | `github.action_ref`         | ダウンロードするリリースタグ。SHA pin の場合は明示指定が必要                 |
-| `manifest`          |    no    | `.github/graft/config.yaml` | 同期設定ファイルのパス                                                       |
-| `upstream-manifest` |    no    | —                           | upstream マニフェスト参照。`owner/repo@ref:path` 形式。local との merge も可 |
+tmux を使用している場合、`pane-border-format` に `@pane-name` を参照する設定を追加すると、
+`dev:up` / `dev:exec` 実行中やブランチ切り替え時にペイン名が `<repo>:<branch>` 形式で自動更新されます。
+
+```tmux
+# ~/.tmux.conf
+set-window-option -g pane-border-status bottom
+set-window-option -g pane-border-format \
+  "#[fg=black,bg=blue] #P #[fg=brightcyan,bg=default] #{?#{@pane-name},#{@pane-name},#{pane_current_command}} "
+```
+
+ブランチ切り替えの追従は `.githooks/post-checkout` が担当します。
+devcontainer 内でも動作するよう、コンテナへの tmux ソケット転送と tmux パッケージが組み込まれています。
 
 ## 使い方
 
@@ -139,11 +112,12 @@ mise run pre-commit       # clean:sweep + fmt:check + clippy:strict + ast-grep +
 │   └── postStartCommand.sh
 ├── .githooks/                  # Git hooks (mise run 連携)
 │   ├── commit-msg              # Conventional Commits 検証
+│   ├── post-checkout           # tmux ペイン名を repo:branch に更新
 │   ├── pre-commit              # コミット前チェック
 │   └── pre-push                # プッシュ前チェック
 ├── .github/                    # GitHub Actions & 設定
 │   ├── actions/                # カスタムアクション
-│   ├── graft/                # テンプレート同期設定
+│   ├── graft/                  # テンプレート同期設定
 │   │   └── config.yaml         # 同期マニフェスト
 │   ├── workflows/              # CI/CD ワークフロー
 │   ├── labeler.yml
@@ -157,14 +131,14 @@ mise run pre-commit       # clean:sweep + fmt:check + clippy:strict + ast-grep +
 │   └── settings.json           # ワークスペース設定
 ├── ast-rules/                  # ast-grep プロジェクトルール
 ├── crates/                     # ワークスペースクレート (3クレート構成)
-│   ├── graft-manifest/       # 純粋データ型・スキーマ (I/O なし、Miri 対応)
+│   ├── graft-manifest/         # 純粋データ型・スキーマ (I/O なし、Miri 対応)
 │   │   ├── src/
 │   │   │   ├── error.rs        # バリデーションエラー型
 │   │   │   ├── manifest.rs     # マニフェストスキーマ・ロード・バリデーション
 │   │   │   ├── strategy.rs     # 戦略結果型
 │   │   │   └── lib.rs
 │   │   └── Cargo.toml
-│   ├── graft-engine/         # ビジネスロジック・トレイト (外部バイナリ I/O なし、Miri 対応)
+│   ├── graft-engine/           # ビジネスロジック・トレイト (外部バイナリ I/O なし、Miri 対応)
 │   │   ├── src/
 │   │   │   ├── diff.rs         # unified diff 生成
 │   │   │   ├── mode/           # sync / validate / ci-check / patch-refresh モード
@@ -174,7 +148,7 @@ mise run pre-commit       # clean:sweep + fmt:check + clippy:strict + ast-grep +
 │   │   │   ├── upstream.rs     # upstream フェッチャートレイト
 │   │   │   └── lib.rs
 │   │   └── Cargo.toml
-│   └── graft/                # CLI バイナリクレート (graft-manifest + graft-engine を利用)
+│   └── graft/                  # CLI バイナリクレート (graft-manifest + graft-engine を利用)
 │       ├── src/
 │       │   ├── main.rs         # アプリケーションのエントリーポイント
 │       │   ├── sync/           # テンプレート同期サブコマンド
@@ -183,7 +157,7 @@ mise run pre-commit       # clean:sweep + fmt:check + clippy:strict + ast-grep +
 │       │   ├── init/           # init サブコマンド
 │       │   ├── discover/       # discover サブコマンド (downstream リポジトリの検出)
 │       │   └── denv/           # denv サブコマンド (devcontainer 環境管理)
-│       │       └── traefik/    # traefik サブコマンド (Traefik + devcontainer ライフサイクル)
+│       │       └── traefik/    # traefik サブコマンド (Traefik セットアップのみ)
 │       ├── tests/
 │       │   └── integration_test.rs  # 統合テスト
 │       ├── build.rs            # ビルドスクリプト
@@ -195,7 +169,7 @@ mise run pre-commit       # clean:sweep + fmt:check + clippy:strict + ast-grep +
 ├── .gitignore                  # Git 除外設定
 ├── .octocov.yml                # カバレッジレポート設定
 ├── .tagpr                      # タグ & リリース設定
-├── action.yml                  # GitHub Action 定義 (naa0yama/graft として利用可)
+├── action.yml                  # GitHub Action 定義 (後方互換のため維持、非推奨)
 ├── Cargo.lock                  # 依存関係のロックファイル
 ├── Cargo.toml                  # ワークスペース設定と共有依存関係
 ├── deny.toml                   # cargo-deny 設定
@@ -211,7 +185,7 @@ mise run pre-commit       # clean:sweep + fmt:check + clippy:strict + ast-grep +
 
 ## VSCode 拡張機能
 
-このプロジェクトの Dev Containers には、Rust 開発を効率化する以下の拡張機能が含まれています:
+このプロジェクトの Dev Container には、Rust 開発を効率化する以下の拡張機能が含まれています:
 
 ### Rust 開発
 
@@ -244,7 +218,6 @@ OpenObserve Enterprise Edition は [EULA (End User License Agreement)](https://o
 ## 参考資料
 
 - [The Rust Programming Language 日本語版](https://doc.rust-jp.rs/book-ja/)
-- [Developing inside a Container](https://code.visualstudio.com/docs/devcontainers/containers)
 - [Cargo Documentation](https://doc.rust-lang.org/cargo/)
 
 ## Troubleshooting

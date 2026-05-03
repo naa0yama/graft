@@ -347,35 +347,21 @@ echo "${alerts}"
 """
 
 ["traefik:setup"]
-description = "Setup Traefik as systemd user service for devcontainer routing (WSL2 host, run once)"
+description = "Setup Traefik as systemd user service for devcontainer routing (run once on host)"
 run = "graft denv traefik setup"
 
 ["dev:up"]
 description = "Start devcontainer with Traefik routing labels for current worktree"
-run = """
-[ -n "${TMUX:-}" ] && tmux set-option -p @role claude 2>/dev/null || true
-[ -n "${TMUX:-}" ] && tmux set-option -p @project-path "$(git rev-parse --show-toplevel)" 2>/dev/null || true
-[ -n "${TMUX:-}" ] && tmux set-option -p @pane-name "$(basename "$(git rev-parse --show-toplevel)"):$(git branch --show-current)" 2>/dev/null || true
-graft denv traefik up
-[ -n "${TMUX:-}" ] && tmux set-option -p @role "" 2>/dev/null || true
-[ -n "${TMUX:-}" ] && tmux set-option -p @pane-name "" 2>/dev/null || true
-"""
+run = "graft denv up"
 
 ["dev:down"]
 description = "Stop and remove devcontainer for current worktree"
-run = "graft denv traefik down"
+run = "graft denv down"
 
 ["dev:exec"]
 description = "Exec into running devcontainer for current worktree"
-run = """
-[ -n "${TMUX:-}" ] && tmux set-option -p @role claude 2>/dev/null || true
-[ -n "${TMUX:-}" ] && tmux set-option -p @project-path "$(git rev-parse --show-toplevel)" 2>/dev/null || true
-[ -n "${TMUX:-}" ] && tmux set-option -p @pane-name "$(basename "$(git rev-parse --show-toplevel)"):$(git branch --show-current)" 2>/dev/null || true
-graft denv traefik exec
-[ -n "${TMUX:-}" ] && tmux set-option -p @role "" 2>/dev/null || true
-[ -n "${TMUX:-}" ] && tmux set-option -p @pane-name "" 2>/dev/null || true
-"""
+run = "graft denv exec"
 
 ["dev:status"]
 description = "List running devcontainers with their Traefik FQDNs"
-run = "graft denv traefik status"
+run = "graft denv status"

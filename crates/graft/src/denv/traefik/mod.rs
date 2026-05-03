@@ -24,11 +24,27 @@ pub fn execute(args: &TraefikArgs) -> ExitCode {
     let docker = SystemDockerRunner;
     match &args.command {
         TraefikCommand::Setup => run(cmd_setup(&docker)),
-        TraefikCommand::Up => run(cmd_up(&docker)),
-        TraefikCommand::Down => run(cmd_down(&docker)),
-        TraefikCommand::Exec => run(cmd_exec(&docker)),
-        TraefikCommand::Status => run(cmd_status(&docker)),
     }
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+pub fn execute_up() -> ExitCode {
+    run(cmd_up(&SystemDockerRunner))
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+pub fn execute_down() -> ExitCode {
+    run(cmd_down(&SystemDockerRunner))
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+pub fn execute_exec() -> ExitCode {
+    run(cmd_exec(&SystemDockerRunner))
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+pub fn execute_status() -> ExitCode {
+    run(cmd_status(&SystemDockerRunner))
 }
 
 #[cfg_attr(coverage_nightly, coverage(off))]
@@ -51,9 +67,67 @@ fn host_check() -> anyhow::Result<()> {
     let in_container = std::env::var("MISE_ENV").as_deref() == Ok("devcontainer")
         || Path::new("/.dockerenv").exists();
     if in_container {
-        anyhow::bail!("must be run on the WSL2 host, not inside a devcontainer");
+        anyhow::bail!("must be run on the host, not inside a devcontainer");
     }
     Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// tmux pane options
+// ---------------------------------------------------------------------------
+
+struct TmuxPane {
+    /// Raw `$TMUX` value (`"socket_path,pid,pane_id"`); empty when tmux is absent.
+    tmux_env: String,
+}
+
+impl TmuxPane {
+    fn from_env() -> Self {
+        Self {
+            tmux_env: std::env::var("TMUX").unwrap_or_default(),
+        }
+    }
+
+    const fn active(&self) -> bool {
+        !self.tmux_env.is_empty()
+    }
+
+    fn env_value(&self) -> &str {
+        &self.tmux_env
+    }
+
+    fn socket_path(&self) -> Option<&str> {
+        if !self.active() {
+            return None;
+        }
+        let path = self.tmux_env.split(',').next().unwrap_or_default();
+        if path.is_empty() { None } else { Some(path) }
+    }
+
+    fn set(&self, option: &str, value: &str) {
+        if !self.active() {
+            return;
+        }
+        let _ = std::process::Command::new("tmux")
+            .args(["set-option", "-p", option, value])
+            .status();
+    }
+
+    fn clear(&self, option: &str) {
+        self.set(option, "");
+    }
+
+    fn set_session(&self, proj: &str, br: &str, ws: &str) {
+        self.set("@role", "claude");
+        self.set("@project-path", ws);
+        self.set("@pane-name", &format!("{proj}:{br}"));
+    }
+
+    fn clear_session(&self) {
+        self.clear("@role");
+        self.clear("@project-path");
+        self.clear("@pane-name");
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -114,15 +188,56 @@ fn branch(workspace: &str) -> anyhow::Result<String> {
 // ---------------------------------------------------------------------------
 
 fn strip_jsonc_comments(src: &str) -> String {
-    src.lines()
-        .filter(|l| !l.trim_start().starts_with("//"))
-        .map(|l| {
-            // remove trailing inline comments (outside of strings — heuristic: after whitespace)
-            l.find("  //")
-                .map_or_else(|| l.to_owned(), |idx| l[..idx].to_owned())
-        })
-        .collect::<Vec<_>>()
-        .join("\n")
+    let mut out = String::with_capacity(src.len());
+    let mut chars = src.chars().peekable();
+    let mut in_string = false;
+
+    while let Some(ch) = chars.next() {
+        if in_string {
+            out.push(ch);
+            if ch == '\\' {
+                if let Some(escaped) = chars.next() {
+                    out.push(escaped);
+                }
+            } else if ch == '"' {
+                in_string = false;
+            }
+        } else {
+            match ch {
+                '"' => {
+                    in_string = true;
+                    out.push(ch);
+                }
+                '/' => match chars.peek() {
+                    Some('/') => {
+                        chars.next();
+                        for c in chars.by_ref() {
+                            if c == '\n' {
+                                out.push('\n');
+                                break;
+                            }
+                        }
+                    }
+                    Some('*') => {
+                        chars.next();
+                        let mut prev = '\0';
+                        for c in chars.by_ref() {
+                            if c == '\n' {
+                                out.push('\n');
+                            }
+                            if prev == '*' && c == '/' {
+                                break;
+                            }
+                            prev = c;
+                        }
+                    }
+                    _ => out.push(ch),
+                },
+                _ => out.push(ch),
+            }
+        }
+    }
+    out
 }
 
 struct DevcontainerMeta {
@@ -450,6 +565,7 @@ fn exec_and_watch(docker: &dyn DockerRunner, workspace: &str) -> anyhow::Result<
 #[cfg_attr(coverage_nightly, coverage(off))]
 fn cmd_setup(docker: &dyn DockerRunner) -> anyhow::Result<()> {
     host_check()?;
+    crate::deps::require(&["curl", "sha256sum", "systemctl", "tar"])?;
 
     traefik_ensure_latest()?;
     let _ = writeln!(
@@ -520,6 +636,11 @@ fn cmd_setup(docker: &dyn DockerRunner) -> anyhow::Result<()> {
 #[cfg_attr(coverage_nightly, coverage(off))]
 fn cmd_up(docker: &dyn DockerRunner) -> anyhow::Result<()> {
     host_check()?;
+    crate::deps::require(&["docker", "devcontainer", "git", "curl", "sha256sum", "tar"])?;
+    let tmux = TmuxPane::from_env();
+    if tmux.active() {
+        crate::deps::require(&["tmux"])?;
+    }
 
     match traefik_ensure_latest()? {
         "installed" => {
@@ -546,6 +667,8 @@ fn cmd_up(docker: &dyn DockerRunner) -> anyhow::Result<()> {
     let proj = project(&ws);
     let br = branch(&ws)?;
     let dc = read_devcontainer(&ws)?;
+
+    tmux.set_session(&proj, &br, &ws);
 
     if dc.ports.is_empty() {
         tracing::warn!("no portsAttributes found in devcontainer.json");
@@ -609,6 +732,21 @@ fn cmd_up(docker: &dyn DockerRunner) -> anyhow::Result<()> {
         tracing::info!("GPG agent socket not available; skipping GPG forwarding");
     }
 
+    // tmux socket forwarding — enables hooks inside the container to update @pane-name
+    match tmux.socket_path() {
+        Some(tmux_sock) if Path::new(tmux_sock).exists() => {
+            run_args.push(serde_json::json!(format!(
+                "--mount=type=bind,source={tmux_sock},target={tmux_sock}"
+            )));
+            run_args.push(serde_json::json!(format!(
+                "--env=TMUX={}",
+                tmux.env_value()
+            )));
+        }
+        Some(_) => tracing::info!("tmux socket not available; skipping tmux forwarding"),
+        None => tracing::info!("TMUX not set; skipping tmux forwarding"),
+    }
+
     // GPG public keyring (readonly — needed for key lookup without trustdb)
     let gpg_home = std::env::var("GNUPGHOME")
         .unwrap_or_else(|_| format!("{}/.gnupg", std::env::var("HOME").unwrap_or_default()));
@@ -637,7 +775,7 @@ fn cmd_up(docker: &dyn DockerRunner) -> anyhow::Result<()> {
         .to_owned();
     serde_json::to_writer(&tmpfile, &config).context("write merged devcontainer config")?;
 
-    // devcontainer up
+    // devcontainer up — capture stdout for JSON parsing, inherit stderr for progress output
     let up_out = std::process::Command::new("devcontainer")
         .args([
             "up",
@@ -646,6 +784,8 @@ fn cmd_up(docker: &dyn DockerRunner) -> anyhow::Result<()> {
             "--override-config",
             &tmpfile_path,
         ])
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::inherit())
         .output()
         .context("devcontainer up")?;
 
@@ -709,12 +849,14 @@ fn cmd_up(docker: &dyn DockerRunner) -> anyhow::Result<()> {
     let _ = writeln!(out);
 
     exec_and_watch(docker, &ws)?;
+    tmux.clear_session();
     Ok(())
 }
 
 #[cfg_attr(coverage_nightly, coverage(off))]
 fn cmd_down(docker: &dyn DockerRunner) -> anyhow::Result<()> {
     host_check()?;
+    crate::deps::require(&["docker", "git"])?;
 
     let ws = workspace()?;
     let proj = project(&ws);
@@ -741,6 +883,11 @@ fn cmd_down(docker: &dyn DockerRunner) -> anyhow::Result<()> {
 #[cfg_attr(coverage_nightly, coverage(off))]
 fn cmd_exec(docker: &dyn DockerRunner) -> anyhow::Result<()> {
     host_check()?;
+    crate::deps::require(&["docker", "devcontainer", "git"])?;
+    let tmux = TmuxPane::from_env();
+    if tmux.active() {
+        crate::deps::require(&["tmux"])?;
+    }
 
     let ws = workspace()?;
     let cid = running_container_id(docker, &ws)?;
@@ -749,7 +896,11 @@ fn cmd_exec(docker: &dyn DockerRunner) -> anyhow::Result<()> {
         let _ = writeln!(std::io::stdout(), "Container not running. Starting...");
         cmd_up(docker)?;
     } else {
+        let br = branch(&ws)?;
+        let proj = project(&ws);
+        tmux.set_session(&proj, &br, &ws);
         exec_and_watch(docker, &ws)?;
+        tmux.clear_session();
     }
     Ok(())
 }
@@ -757,6 +908,7 @@ fn cmd_exec(docker: &dyn DockerRunner) -> anyhow::Result<()> {
 #[cfg_attr(coverage_nightly, coverage(off))]
 fn cmd_status(docker: &dyn DockerRunner) -> anyhow::Result<()> {
     host_check()?;
+    crate::deps::require(&["docker"])?;
     let out = run_checked(
         docker,
         &[
@@ -790,6 +942,110 @@ mod tests {
         let result = strip_jsonc_comments(src);
         assert!(!result.contains("inline"));
         assert!(result.contains("\"name\": \"traefik\""));
+    }
+
+    #[test]
+    fn strip_jsonc_inline_comment_single_space() {
+        // devcontainer.json extension entries use a single space before //
+        let src = "{\n  \"exts\": [\n    \"dprint.dprint\", // Formatter\n    \"rust-lang.rust-analyzer\"\n  ]\n}";
+        let result = strip_jsonc_comments(src);
+        assert!(!result.contains("Formatter"));
+        let v: serde_json::Value = serde_json::from_str(&result).expect("valid json");
+        let exts = v.get("exts").and_then(|e| e.as_array()).expect("array");
+        assert_eq!(exts.first(), Some(&serde_json::json!("dprint.dprint")));
+        assert_eq!(
+            exts.get(1),
+            Some(&serde_json::json!("rust-lang.rust-analyzer"))
+        );
+    }
+
+    #[test]
+    fn strip_jsonc_preserves_url_with_double_slash() {
+        // // inside a string must not be stripped
+        let src = r#"{ "url": "https://example.com" }"#;
+        let result = strip_jsonc_comments(src);
+        assert_eq!(result, src);
+        let v: serde_json::Value = serde_json::from_str(&result).expect("valid json");
+        assert_eq!(
+            v.get("url"),
+            Some(&serde_json::json!("https://example.com"))
+        );
+    }
+
+    #[test]
+    fn strip_jsonc_preserves_double_slash_in_string_value() {
+        // a value that contains // should be left intact
+        let src = r#"{ "path": "src // not a comment" }"#;
+        let result = strip_jsonc_comments(src);
+        let v: serde_json::Value = serde_json::from_str(&result).expect("valid json");
+        assert_eq!(
+            v.get("path"),
+            Some(&serde_json::json!("src // not a comment"))
+        );
+    }
+
+    #[test]
+    fn strip_jsonc_escaped_quote_in_string() {
+        // \" inside a string must not end the string state
+        let src = r#"{ "msg": "say \"hi\" // still in string", "x": 1 }"#;
+        let result = strip_jsonc_comments(src);
+        let v: serde_json::Value = serde_json::from_str(&result).expect("valid json");
+        assert_eq!(
+            v.get("msg"),
+            Some(&serde_json::json!("say \"hi\" // still in string"))
+        );
+        assert_eq!(v.get("x"), Some(&serde_json::json!(1)));
+    }
+
+    #[test]
+    fn strip_jsonc_removes_block_comment() {
+        let src = "{ \"a\": /* removed */ 1 }";
+        let result = strip_jsonc_comments(src);
+        assert!(!result.contains("removed"));
+        let v: serde_json::Value = serde_json::from_str(&result).expect("valid json");
+        assert_eq!(v.get("a"), Some(&serde_json::json!(1)));
+    }
+
+    #[test]
+    fn strip_jsonc_removes_multiline_block_comment() {
+        let src = "{\n  /* line1\n     line2 */\n  \"a\": 1\n}";
+        let result = strip_jsonc_comments(src);
+        assert!(!result.contains("line1"));
+        assert!(!result.contains("line2"));
+        // newlines inside block comment are preserved to keep line numbers stable
+        assert_eq!(result.lines().count(), src.lines().count());
+        let v: serde_json::Value = serde_json::from_str(&result).expect("valid json");
+        assert_eq!(v.get("a"), Some(&serde_json::json!(1)));
+    }
+
+    #[test]
+    fn strip_jsonc_no_comments_is_passthrough() {
+        let src = r#"{ "name": "graft", "version": "0.4.1" }"#;
+        assert_eq!(strip_jsonc_comments(src), src);
+    }
+
+    #[test]
+    fn strip_jsonc_empty_input() {
+        assert_eq!(strip_jsonc_comments(""), "");
+    }
+
+    #[test]
+    fn strip_jsonc_array_with_inline_comments() {
+        // mirrors the real devcontainer.json mounts section
+        let src = "{\n  \"mounts\": [\n    // Claude Code\n    \"type=bind,source=~/.claude,target=/home/cuser/.claude\",\n    \"type=bind,source=~/.claude.json,target=/home/cuser/.claude.json\", // json\n    // Git\n    \"type=bind,source=~/.gitconfig,target=/home/cuser/.gitconfig\"\n  ]\n}";
+        let result = strip_jsonc_comments(src);
+        let v: serde_json::Value = serde_json::from_str(&result).expect("valid json");
+        let mounts = v.get("mounts").and_then(|m| m.as_array()).expect("array");
+        assert_eq!(mounts.len(), 3);
+    }
+
+    #[test]
+    fn strip_jsonc_comment_at_eof_without_newline() {
+        let src = "{ \"a\": 1 } // trailing";
+        let result = strip_jsonc_comments(src);
+        assert!(!result.contains("trailing"));
+        // must still be parseable
+        serde_json::from_str::<serde_json::Value>(&result).expect("valid json");
     }
 
     #[test]

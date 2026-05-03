@@ -2,7 +2,7 @@
 # .devcontainer/traefik.sh <command>
 # Commands: setup | up | down | exec | status
 #
-# Must be run on the WSL2 host, not inside a devcontainer.
+# Must be run on the host, not inside a devcontainer.
 set -euo pipefail
 
 readonly TRAEFIK_BIN="${HOME}/.local/bin/traefik"
@@ -19,7 +19,7 @@ readonly TRAEFIK_PORT_DASHBOARD=8081
 
 _host_check() {
 	if [ "${MISE_ENV:-}" = "devcontainer" ] || [ -f "/.dockerenv" ]; then
-		echo "Error: must be run on the WSL2 host, not inside a devcontainer." >&2
+		echo "Error: must be run on the host, not inside a devcontainer." >&2
 		exit 1
 	fi
 }

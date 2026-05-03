@@ -23,6 +23,7 @@ dprint = "0.54.0"
 ghalint = "1.5.5"
 usage = "3.2.1"
 zizmor = "1.24.1"
+"github:naa0yama/graft" = "0.4.1"
 
 [task_config]
 includes = [".mise/tasks.toml", ".mise/overrides.toml"]

@@ -3,6 +3,7 @@
 
 mod cli;
 mod denv;
+mod deps;
 mod discover;
 mod init;
 mod issue_sync;
@@ -21,7 +22,7 @@ const APP_VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), " (rev:", env!("GIT
 fn main() -> ExitCode {
     tracing_subscriber::fmt()
         .with_env_filter(
-            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("warn")),
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("warn,graft=info")),
         )
         .with_writer(std::io::stderr)
         .init();
