@@ -1,5 +1,6 @@
 use clap::{Parser, Subcommand};
 
+use crate::discover::cli::DiscoverArgs;
 use crate::init::cli::InitArgs;
 use crate::issue_sync::cli::IssueSyncArgs;
 use crate::sync::cli::SyncArgs;
@@ -21,4 +22,6 @@ pub enum Commands {
     Init(InitArgs),
     /// Detect upstream drift and manage a tracking GitHub Issue
     IssueSync(IssueSyncArgs),
+    /// Discover downstream repositories that fork or use this repo as a template
+    Discover(DiscoverArgs),
 }
