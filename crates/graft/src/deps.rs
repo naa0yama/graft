@@ -22,17 +22,20 @@ mod tests {
     use super::*;
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn require_existing_command() {
         assert!(require(&["sh"]).is_ok());
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn require_missing_command() {
         let err = require(&["__graft_nonexistent_cmd__"]).unwrap_err();
         assert!(err.to_string().contains("__graft_nonexistent_cmd__"));
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn require_mixed_lists_all_missing_reported() {
         let err = require(&["sh", "__missing_a__", "__missing_b__"]).unwrap_err();
         let msg = err.to_string();
