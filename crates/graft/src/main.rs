@@ -2,6 +2,7 @@
 #![cfg_attr(coverage_nightly, feature(coverage_attribute))]
 
 mod cli;
+mod discover;
 mod init;
 mod issue_sync;
 mod sync;
@@ -29,5 +30,6 @@ fn main() -> ExitCode {
         Commands::Sync(args) => sync::execute(&args),
         Commands::Init(args) => init::execute(&args),
         Commands::IssueSync(args) => issue_sync::execute(&args),
+        Commands::Discover(args) => discover::execute(&args),
     }
 }

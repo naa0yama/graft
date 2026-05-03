@@ -84,7 +84,7 @@ pub fn run(
                     },
                     Ok(FetchResult::Content(upstream)) => {
                         if rule.strategy == Strategy::Replace {
-                            if rule.preserve_markers.unwrap_or(false) {
+                            if rule.preserve_markers.unwrap_or(true) {
                                 strategy::replace::apply_with_markers(
                                     &upstream,
                                     local_bytes.as_deref(),
@@ -111,7 +111,7 @@ pub fn run(
                         local_bytes.as_deref(),
                         &full_patch,
                         patch_runner,
-                        rule.preserve_markers.unwrap_or(false),
+                        rule.preserve_markers.unwrap_or(true),
                     ),
                 }
             }
