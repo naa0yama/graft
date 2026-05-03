@@ -1,5 +1,20 @@
 # Changelog
 
+## [v0.4.0](https://github.com/naa0yama/graft/compare/v0.3.7...v0.4.0) - 2026-05-03
+### Features 🎉
+- refactor: rename project from gh-sync to graft by @naa0yama in https://github.com/naa0yama/graft/pull/105
+- refactor: replace graft distribute with graft discover + distribute-upstream skill by @naa0yama in https://github.com/naa0yama/graft/pull/110
+- feat: add graft denv traefik subcommand by @naa0yama in https://github.com/naa0yama/graft/pull/111
+### Development Environment 🔧
+- chore(deps): update mozilla-actions/sccache-action action to v0.0.10 by @renovate[bot] in https://github.com/naa0yama/graft/pull/100
+- chore(deps): update dependency jdx/mise to v2026.4.19 by @renovate[bot] in https://github.com/naa0yama/graft/pull/99
+- chore(deps): update taiki-e/install-action action to v2.75.20 by @renovate[bot] in https://github.com/naa0yama/graft/pull/102
+- chore(deps): update taiki-e/install-action action to v2.75.21 by @renovate[bot] in https://github.com/naa0yama/graft/pull/104
+- chore(deps): update dependency jdx/mise to v2026.4.20 by @renovate[bot] in https://github.com/naa0yama/graft/pull/103
+- chore(deps): update k1low/octocov-action action to v1.5.1 by @renovate[bot] in https://github.com/naa0yama/graft/pull/106
+- chore(deps): update taiki-e/install-action action to v2.75.22 by @renovate[bot] in https://github.com/naa0yama/graft/pull/107
+- chore(deps): update dependency jdx/mise to v2026.4.22 by @renovate[bot] in https://github.com/naa0yama/graft/pull/109
+
 ## [v0.3.7](https://github.com/naa0yama/gh-sync/compare/v0.3.6...v0.3.7) - 2026-04-29
 
 ### Dependency Updates 📦
