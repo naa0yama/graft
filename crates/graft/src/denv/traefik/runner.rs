@@ -22,6 +22,7 @@ pub trait DockerRunner: Send + Sync {
 pub struct SystemDockerRunner;
 
 impl DockerRunner for SystemDockerRunner {
+    #[cfg_attr(coverage_nightly, coverage(off))]
     fn run(&self, args: &[&str]) -> anyhow::Result<CommandOutput> {
         let output = std::process::Command::new("docker")
             .args(args)

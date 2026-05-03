@@ -11,25 +11,30 @@ pub const TRAEFIK_PORT_ROUTER: u16 = 8080;
 pub const TRAEFIK_PORT_DASHBOARD: u16 = 8081;
 
 /// Returns the path to the Traefik binary.
+#[cfg_attr(coverage_nightly, coverage(off))]
 pub fn traefik_bin() -> std::path::PathBuf {
     home_dir().join(".local/bin/traefik")
 }
 
 /// Returns the path to the Traefik static configuration file.
+#[cfg_attr(coverage_nightly, coverage(off))]
 pub fn traefik_config() -> std::path::PathBuf {
     home_dir().join(".config/traefik/traefik.yml")
 }
 
 /// Returns the path to the Traefik dynamic configuration directory.
+#[cfg_attr(coverage_nightly, coverage(off))]
 pub fn traefik_dynamic_dir() -> std::path::PathBuf {
     home_dir().join(".config/traefik/dynamic")
 }
 
 /// Returns the path to the Traefik systemd user service file.
+#[cfg_attr(coverage_nightly, coverage(off))]
 pub fn traefik_service() -> std::path::PathBuf {
     home_dir().join(".config/systemd/user/traefik.service")
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 fn home_dir() -> std::path::PathBuf {
     std::env::var("HOME").map_or_else(
         |_| std::path::PathBuf::from("/tmp"),

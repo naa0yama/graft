@@ -19,6 +19,7 @@ use routes::{normalize_branch, remove_routes, write_routes};
 use runner::{DockerRunner, SystemDockerRunner, run_checked};
 
 /// Dispatch a Traefik subcommand and return an exit code.
+#[cfg_attr(coverage_nightly, coverage(off))]
 pub fn execute(args: &TraefikArgs) -> ExitCode {
     let docker = SystemDockerRunner;
     match &args.command {
@@ -30,6 +31,7 @@ pub fn execute(args: &TraefikArgs) -> ExitCode {
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 fn run(result: anyhow::Result<()>) -> ExitCode {
     match result {
         Ok(()) => ExitCode::SUCCESS,
@@ -44,6 +46,7 @@ fn run(result: anyhow::Result<()>) -> ExitCode {
 // Host check
 // ---------------------------------------------------------------------------
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 fn host_check() -> anyhow::Result<()> {
     let in_container = std::env::var("MISE_ENV").as_deref() == Ok("devcontainer")
         || Path::new("/.dockerenv").exists();
@@ -57,6 +60,7 @@ fn host_check() -> anyhow::Result<()> {
 // Git helpers
 // ---------------------------------------------------------------------------
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 fn workspace() -> anyhow::Result<String> {
     let out = std::process::Command::new("git")
         .args(["rev-parse", "--show-toplevel"])
@@ -71,6 +75,7 @@ fn workspace() -> anyhow::Result<String> {
         .to_owned())
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 fn project(workspace: &str) -> String {
     Path::new(workspace)
         .file_name()
@@ -79,6 +84,7 @@ fn project(workspace: &str) -> String {
         .to_owned()
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 fn branch(workspace: &str) -> anyhow::Result<String> {
     let out = std::process::Command::new("git")
         .args(["-C", workspace, "branch", "--show-current"])
@@ -154,6 +160,7 @@ fn read_devcontainer(workspace: &str) -> anyhow::Result<DevcontainerMeta> {
 // Traefik binary management
 // ---------------------------------------------------------------------------
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 fn traefik_installed_version() -> Option<String> {
     let bin = traefik_bin();
     if !bin.exists() {
@@ -170,6 +177,7 @@ fn traefik_installed_version() -> Option<String> {
         .and_then(|l| l.split_whitespace().nth(1).map(|v| format!("v{v}")))
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 fn traefik_latest() -> anyhow::Result<String> {
     let out = std::process::Command::new("curl")
         .args([
@@ -191,6 +199,7 @@ fn traefik_latest() -> anyhow::Result<String> {
         .context("tag_name not found in github releases response")
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 fn traefik_install_version(version: &str) -> anyhow::Result<()> {
     let arch = match std::env::consts::ARCH {
         "x86_64" => "amd64",
@@ -303,6 +312,7 @@ fn traefik_install_version(version: &str) -> anyhow::Result<()> {
 }
 
 /// Returns "installed", "updated", or "already-latest".
+#[cfg_attr(coverage_nightly, coverage(off))]
 fn traefik_ensure_latest() -> anyhow::Result<&'static str> {
     let installed = traefik_installed_version();
     let latest = match traefik_latest() {
@@ -340,6 +350,7 @@ fn traefik_ensure_latest() -> anyhow::Result<&'static str> {
 // Docker helpers
 // ---------------------------------------------------------------------------
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 fn ensure_network(docker: &dyn DockerRunner) -> anyhow::Result<()> {
     let out = docker.run(&["network", "inspect", "devcontainer-traefik"])?;
     if out.exit_code != 0 {
@@ -349,6 +360,7 @@ fn ensure_network(docker: &dyn DockerRunner) -> anyhow::Result<()> {
     Ok(())
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 fn container_id(docker: &dyn DockerRunner, workspace: &str) -> anyhow::Result<Vec<String>> {
     let out = run_checked(
         docker,
@@ -368,6 +380,7 @@ fn container_id(docker: &dyn DockerRunner, workspace: &str) -> anyhow::Result<Ve
     Ok(ids)
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 fn running_container_id(docker: &dyn DockerRunner, workspace: &str) -> anyhow::Result<String> {
     let out = run_checked(
         docker,
@@ -381,6 +394,7 @@ fn running_container_id(docker: &dyn DockerRunner, workspace: &str) -> anyhow::R
     Ok(out.stdout_str()?.trim().to_owned())
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 fn container_network_ip(
     docker: &dyn DockerRunner,
     cid: &str,
@@ -395,6 +409,7 @@ fn container_network_ip(
 // Interactive exec helper
 // ---------------------------------------------------------------------------
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 fn exec_and_watch(docker: &dyn DockerRunner, workspace: &str) -> anyhow::Result<()> {
     std::process::Command::new("devcontainer")
         .args(["exec", "--workspace-folder", workspace, "bash"])
@@ -432,6 +447,7 @@ fn exec_and_watch(docker: &dyn DockerRunner, workspace: &str) -> anyhow::Result<
 // Commands
 // ---------------------------------------------------------------------------
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 fn cmd_setup(docker: &dyn DockerRunner) -> anyhow::Result<()> {
     host_check()?;
 
@@ -501,6 +517,7 @@ fn cmd_setup(docker: &dyn DockerRunner) -> anyhow::Result<()> {
 }
 
 #[allow(clippy::too_many_lines)]
+#[cfg_attr(coverage_nightly, coverage(off))]
 fn cmd_up(docker: &dyn DockerRunner) -> anyhow::Result<()> {
     host_check()?;
 
@@ -695,6 +712,7 @@ fn cmd_up(docker: &dyn DockerRunner) -> anyhow::Result<()> {
     Ok(())
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 fn cmd_down(docker: &dyn DockerRunner) -> anyhow::Result<()> {
     host_check()?;
 
@@ -720,6 +738,7 @@ fn cmd_down(docker: &dyn DockerRunner) -> anyhow::Result<()> {
     Ok(())
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 fn cmd_exec(docker: &dyn DockerRunner) -> anyhow::Result<()> {
     host_check()?;
 
@@ -735,6 +754,7 @@ fn cmd_exec(docker: &dyn DockerRunner) -> anyhow::Result<()> {
     Ok(())
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 fn cmd_status(docker: &dyn DockerRunner) -> anyhow::Result<()> {
     host_check()?;
     let out = run_checked(
