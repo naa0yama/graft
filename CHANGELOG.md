@@ -1,5 +1,9 @@
 # Changelog
 
+## [v0.5.0](https://github.com/naa0yama/graft/compare/v0.4.1...v0.5.0) - 2026-05-03
+### Features 🎉
+- feat(denv): add tmux pane tracking and promote denv subcommands to top-level by @naa0yama in https://github.com/naa0yama/graft/pull/115
+
 ## [v0.4.1](https://github.com/naa0yama/graft/compare/v0.4.0...v0.4.1) - 2026-05-03
 
 ### Features 🎉
