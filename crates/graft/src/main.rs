@@ -2,6 +2,7 @@
 #![cfg_attr(coverage_nightly, feature(coverage_attribute))]
 
 mod cli;
+mod denv;
 mod discover;
 mod init;
 mod issue_sync;
@@ -31,5 +32,6 @@ fn main() -> ExitCode {
         Commands::Init(args) => init::execute(&args),
         Commands::IssueSync(args) => issue_sync::execute(&args),
         Commands::Discover(args) => discover::execute(&args),
+        Commands::Denv(args) => denv::execute(&args),
     }
 }

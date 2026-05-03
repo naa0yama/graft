@@ -1,5 +1,6 @@
 use clap::{Parser, Subcommand};
 
+use crate::denv::cli::DenvArgs;
 use crate::discover::cli::DiscoverArgs;
 use crate::init::cli::InitArgs;
 use crate::issue_sync::cli::IssueSyncArgs;
@@ -24,4 +25,7 @@ pub enum Commands {
     IssueSync(IssueSyncArgs),
     /// Discover downstream repositories that fork or use this repo as a template
     Discover(DiscoverArgs),
+    /// Manage dev environment tools (Traefik, devcontainer lifecycle)
+    #[command(alias = "d")]
+    Denv(DenvArgs),
 }
