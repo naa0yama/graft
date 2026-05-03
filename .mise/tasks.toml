@@ -347,23 +347,23 @@ echo "${alerts}"
 """
 
 ["traefik:setup"]
-description = "Setup traefik as systemd user service for devcontainer routing (WSL2 host, run once)"
-run = ".devcontainer/traefik.sh setup"
+description = "Setup Traefik as systemd user service for devcontainer routing (WSL2 host, run once)"
+run = "graft denv traefik setup"
 
 ["dev:up"]
-description = "Start devcontainer with traefik routing labels for current worktree"
+description = "Start devcontainer with Traefik routing labels for current worktree"
 run = """
 [ -n "${TMUX:-}" ] && tmux set-option -p @role claude 2>/dev/null || true
 [ -n "${TMUX:-}" ] && tmux set-option -p @project-path "$(git rev-parse --show-toplevel)" 2>/dev/null || true
 [ -n "${TMUX:-}" ] && tmux set-option -p @pane-name "$(basename "$(git rev-parse --show-toplevel)"):$(git branch --show-current)" 2>/dev/null || true
-.devcontainer/traefik.sh up
+graft denv traefik up
 [ -n "${TMUX:-}" ] && tmux set-option -p @role "" 2>/dev/null || true
 [ -n "${TMUX:-}" ] && tmux set-option -p @pane-name "" 2>/dev/null || true
 """
 
 ["dev:down"]
 description = "Stop and remove devcontainer for current worktree"
-run = ".devcontainer/traefik.sh down"
+run = "graft denv traefik down"
 
 ["dev:exec"]
 description = "Exec into running devcontainer for current worktree"
@@ -371,11 +371,11 @@ run = """
 [ -n "${TMUX:-}" ] && tmux set-option -p @role claude 2>/dev/null || true
 [ -n "${TMUX:-}" ] && tmux set-option -p @project-path "$(git rev-parse --show-toplevel)" 2>/dev/null || true
 [ -n "${TMUX:-}" ] && tmux set-option -p @pane-name "$(basename "$(git rev-parse --show-toplevel)"):$(git branch --show-current)" 2>/dev/null || true
-.devcontainer/traefik.sh exec
+graft denv traefik exec
 [ -n "${TMUX:-}" ] && tmux set-option -p @role "" 2>/dev/null || true
 [ -n "${TMUX:-}" ] && tmux set-option -p @pane-name "" 2>/dev/null || true
 """
 
 ["dev:status"]
-description = "List running devcontainers with their traefik FQDNs"
-run = ".devcontainer/traefik.sh status"
+description = "List running devcontainers with their Traefik FQDNs"
+run = "graft denv traefik status"

@@ -181,7 +181,9 @@ mise run pre-commit       # clean:sweep + fmt:check + clippy:strict + ast-grep +
 │       │   │   ├── detect.rs   # fork/template 親リポジトリの自動検出
 │       │   │   └── runner.rs   # GhRunner トレイト (gh CLI 呼び出し抽象化)
 │       │   ├── init/           # init サブコマンド
-│       │   └── discover/       # discover サブコマンド (downstream リポジトリの検出)
+│       │   ├── discover/       # discover サブコマンド (downstream リポジトリの検出)
+│       │   └── denv/           # denv サブコマンド (devcontainer 環境管理)
+│       │       └── traefik/    # traefik サブコマンド (Traefik + devcontainer ライフサイクル)
 │       ├── tests/
 │       │   └── integration_test.rs  # 統合テスト
 │       ├── build.rs            # ビルドスクリプト
