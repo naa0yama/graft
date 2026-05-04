@@ -1,5 +1,15 @@
 # Changelog
 
+## [v0.5.1](https://github.com/naa0yama/graft/compare/v0.5.0...v0.5.1) - 2026-05-04
+
+### Bug Fixes 🐌
+
+- fix(denv): inject TMUX_PANE env var into devcontainer by @naa0yama in https://github.com/naa0yama/graft/pull/119
+
+### Development Environment 🔧
+
+- chore(deps): update dependency jdx/mise to v2026.4.23 by @renovate[bot] in https://github.com/naa0yama/graft/pull/117
+
 ## [v0.5.0](https://github.com/naa0yama/graft/compare/v0.4.1...v0.5.0) - 2026-05-03
 
 ### Features 🎉
