@@ -79,12 +79,15 @@ fn host_check() -> anyhow::Result<()> {
 struct TmuxPane {
     /// Raw `$TMUX` value (`"socket_path,pid,pane_id"`); empty when tmux is absent.
     tmux_env: String,
+    /// Raw `$TMUX_PANE` value (e.g., `"%31"`); required for `set-option -p` target resolution.
+    tmux_pane: String,
 }
 
 impl TmuxPane {
     fn from_env() -> Self {
         Self {
             tmux_env: std::env::var("TMUX").unwrap_or_default(),
+            tmux_pane: std::env::var("TMUX_PANE").unwrap_or_default(),
         }
     }
 
@@ -102,6 +105,14 @@ impl TmuxPane {
         }
         let path = self.tmux_env.split(',').next().unwrap_or_default();
         if path.is_empty() { None } else { Some(path) }
+    }
+
+    fn pane_id(&self) -> Option<&str> {
+        if self.tmux_pane.is_empty() {
+            None
+        } else {
+            Some(&self.tmux_pane)
+        }
     }
 
     fn set(&self, option: &str, value: &str) {
@@ -742,6 +753,9 @@ fn cmd_up(docker: &dyn DockerRunner) -> anyhow::Result<()> {
                 "--env=TMUX={}",
                 tmux.env_value()
             )));
+            if let Some(pane) = tmux.pane_id() {
+                run_args.push(serde_json::json!(format!("--env=TMUX_PANE={pane}")));
+            }
         }
         Some(_) => tracing::info!("tmux socket not available; skipping tmux forwarding"),
         None => tracing::info!("TMUX not set; skipping tmux forwarding"),
