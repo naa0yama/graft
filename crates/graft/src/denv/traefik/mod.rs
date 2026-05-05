@@ -787,6 +787,14 @@ fn cmd_up(docker: &dyn DockerRunner) -> anyhow::Result<()> {
             "--mount=type=bind,source={trustdb_str},target=/home/{user_name}/.gnupg/trustdb.gpg,readonly"
         )));
     }
+    // GPG private key stubs (readonly — needed so gpg can find keys via forwarded agent)
+    let private_keys_dir = Path::new(&gpg_home).join("private-keys-v1.d");
+    if private_keys_dir.is_dir() {
+        let private_keys_str = private_keys_dir.to_string_lossy();
+        run_args.push(serde_json::json!(format!(
+            "--mount=type=bind,source={private_keys_str},target=/home/{user_name}/.gnupg/private-keys-v1.d,readonly"
+        )));
+    }
 
     // Merge runArgs into the already-parsed devcontainer config
     let mut config = dc.config;
