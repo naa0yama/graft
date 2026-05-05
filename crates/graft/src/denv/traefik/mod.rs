@@ -743,7 +743,7 @@ fn cmd_up(docker: &dyn DockerRunner) -> anyhow::Result<()> {
         .map(|s| s.trim().to_owned())
         .unwrap_or_default();
     if !gpg_sock.is_empty() && Path::new(&gpg_sock).exists() {
-        let target = format!("/home/{user_name}/.gnupg/S.gpg-agent");
+        let target = format!("/run/user/{container_uid}/gnupg/S.gpg-agent");
         run_args.push(serde_json::json!(format!(
             "--mount=type=bind,source={gpg_sock},target={target}"
         )));
@@ -785,14 +785,6 @@ fn cmd_up(docker: &dyn DockerRunner) -> anyhow::Result<()> {
         let trustdb_str = trustdb.to_string_lossy();
         run_args.push(serde_json::json!(format!(
             "--mount=type=bind,source={trustdb_str},target=/home/{user_name}/.gnupg/trustdb.gpg,readonly"
-        )));
-    }
-    // GPG private key stubs (readonly — needed so gpg can find keys via forwarded agent)
-    let private_keys_dir = Path::new(&gpg_home).join("private-keys-v1.d");
-    if private_keys_dir.is_dir() {
-        let private_keys_str = private_keys_dir.to_string_lossy();
-        run_args.push(serde_json::json!(format!(
-            "--mount=type=bind,source={private_keys_str},target=/home/{user_name}/.gnupg/private-keys-v1.d,readonly"
         )));
     }
 
