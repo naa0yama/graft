@@ -5,8 +5,11 @@ echo "Validating mounted files and directories..."
 
 # List of expected mounted files and directories (optional)
 EXPECTED_MOUNTS=(
-	"$HOME/.claude.json"
 	"$HOME/.claude/"
+	"$HOME/.claude.json"
+	"$HOME/.gitconfig"
+	"$HOME/.gitconfig.d/"
+	"$HOME/.config/gh/"
 )
 
 validation_failed=false

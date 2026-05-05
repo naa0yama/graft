@@ -254,6 +254,7 @@ fn strip_jsonc_comments(src: &str) -> String {
 struct DevcontainerMeta {
     ports: Vec<String>,
     container_uid: String,
+    user_name: String,
     config: serde_json::Value,
 }
 
@@ -275,9 +276,15 @@ fn read_devcontainer(workspace: &str) -> anyhow::Result<DevcontainerMeta> {
         .and_then(|u| u.as_str())
         .unwrap_or("1000")
         .to_owned();
+    let user_name = config
+        .get("remoteUser")
+        .and_then(|u| u.as_str())
+        .unwrap_or("user")
+        .to_owned();
     Ok(DevcontainerMeta {
         ports,
         container_uid,
+        user_name,
         config,
     })
 }
@@ -693,6 +700,7 @@ fn cmd_up(docker: &dyn DockerRunner) -> anyhow::Result<()> {
         .to_owned();
     let container_dynamic_path = "/traefik-dynamic";
     let container_uid = dc.container_uid;
+    let user_name = dc.user_name;
     let colorterm = std::env::var("COLORTERM").unwrap_or_default();
     let term = std::env::var("TERM").unwrap_or_else(|_| "xterm-256color".to_owned());
 
@@ -735,7 +743,7 @@ fn cmd_up(docker: &dyn DockerRunner) -> anyhow::Result<()> {
         .map(|s| s.trim().to_owned())
         .unwrap_or_default();
     if !gpg_sock.is_empty() && Path::new(&gpg_sock).exists() {
-        let target = format!("/run/user/{container_uid}/gnupg/S.gpg-agent");
+        let target = format!("/home/{user_name}/.gnupg/S.gpg-agent");
         run_args.push(serde_json::json!(format!(
             "--mount=type=bind,source={gpg_sock},target={target}"
         )));
@@ -768,7 +776,15 @@ fn cmd_up(docker: &dyn DockerRunner) -> anyhow::Result<()> {
     if pubring.exists() {
         let pubring_str = pubring.to_string_lossy();
         run_args.push(serde_json::json!(format!(
-            "--mount=type=bind,source={pubring_str},target=/home/cuser/.gnupg/pubring.kbx,readonly"
+            "--mount=type=bind,source={pubring_str},target=/home/{user_name}/.gnupg/pubring.kbx,readonly"
+        )));
+    }
+    // GPG trust database (readonly — needed for correct key trust display)
+    let trustdb = Path::new(&gpg_home).join("trustdb.gpg");
+    if trustdb.exists() {
+        let trustdb_str = trustdb.to_string_lossy();
+        run_args.push(serde_json::json!(format!(
+            "--mount=type=bind,source={trustdb_str},target=/home/{user_name}/.gnupg/trustdb.gpg,readonly"
         )));
     }
 
@@ -1074,7 +1090,8 @@ mod tests {
   },
   "build": {
     "args": { "USER_UID": "1001" }
-  }
+  },
+  "remoteUser": "devuser"
 }"#;
         std::fs::write(dc_dir.join("devcontainer.json"), json).expect("write devcontainer.json");
 
@@ -1084,5 +1101,19 @@ mod tests {
         assert!(meta.ports.contains(&"5080".to_owned()));
         assert!(meta.ports.contains(&"8080".to_owned()));
         assert_eq!(meta.container_uid, "1001");
+        assert_eq!(meta.user_name, "devuser");
+    }
+
+    #[test]
+    fn read_devcontainer_user_name_defaults_when_absent() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let dc_dir = dir.path().join(".devcontainer");
+        std::fs::create_dir_all(&dc_dir).expect("create .devcontainer");
+        let json = r#"{ "build": { "args": { "USER_UID": "1000" } } }"#;
+        std::fs::write(dc_dir.join("devcontainer.json"), json).expect("write devcontainer.json");
+
+        let meta = read_devcontainer(dir.path().to_str().expect("path to str"))
+            .expect("read_devcontainer");
+        assert_eq!(meta.user_name, "user");
     }
 }
