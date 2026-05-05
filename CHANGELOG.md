@@ -1,5 +1,16 @@
 # Changelog
 
+## [v0.5.2](https://github.com/naa0yama/graft/compare/v0.5.1...v0.5.2) - 2026-05-05
+
+### Bug Fixes 🐌
+
+- fix(denv): mount GPG trustdb.gpg and fix agent socket path by @naa0yama in https://github.com/naa0yama/graft/pull/123
+
+### Development Environment 🔧
+
+- chore(deps): update dependency jdx/mise to v2026.4.24 by @renovate[bot] in https://github.com/naa0yama/graft/pull/120
+- chore(deps): update taiki-e/install-action action to v2.75.23 by @renovate[bot] in https://github.com/naa0yama/graft/pull/122
+
 ## [v0.5.1](https://github.com/naa0yama/graft/compare/v0.5.0...v0.5.1) - 2026-05-04
 
 ### Bug Fixes 🐌
