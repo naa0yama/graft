@@ -2,6 +2,10 @@
 .claude/skills/lib-*/SKILL.md
 .claude/skills/tool-*/SKILL.md
 
-# o2
+# Claude Code
 .mcp.json
 
+# graft:keep-start
+# Project-specific dependencies are listed here.
+
+# graft:keep-end

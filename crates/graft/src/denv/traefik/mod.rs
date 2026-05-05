@@ -743,7 +743,7 @@ fn cmd_up(docker: &dyn DockerRunner) -> anyhow::Result<()> {
         .map(|s| s.trim().to_owned())
         .unwrap_or_default();
     if !gpg_sock.is_empty() && Path::new(&gpg_sock).exists() {
-        let target = format!("/home/{user_name}/.gnupg/S.gpg-agent");
+        let target = format!("/run/user/{container_uid}/gnupg/S.gpg-agent");
         run_args.push(serde_json::json!(format!(
             "--mount=type=bind,source={gpg_sock},target={target}"
         )));
