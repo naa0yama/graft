@@ -169,7 +169,6 @@ mise run pre-commit       # clean:sweep + fmt:check + clippy:strict + ast-grep +
 ├── .gitignore                  # Git 除外設定
 ├── .octocov.yml                # カバレッジレポート設定
 ├── .tagpr                      # タグ & リリース設定
-├── action.yml                  # GitHub Action 定義 (後方互換のため維持、非推奨)
 ├── Cargo.lock                  # 依存関係のロックファイル
 ├── Cargo.toml                  # ワークスペース設定と共有依存関係
 ├── deny.toml                   # cargo-deny 設定

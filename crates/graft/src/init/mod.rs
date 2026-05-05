@@ -6,10 +6,6 @@ mod generate;
 pub mod schema;
 /// Interactive file + strategy picker widget.
 mod select;
-/// Claude Code skill file generator.
-mod skill;
-/// GitHub Actions workflow template generator.
-pub mod workflow;
 
 use std::io::{self, IsTerminal as _, Write as _};
 use std::path::Path;
@@ -58,19 +54,6 @@ fn validate_repo_format(repo: &str) -> anyhow::Result<()> {
     }
 }
 
-/// Write `content` to `path`, creating parent directories as needed.
-///
-/// # Errors
-///
-/// Returns an error when directory creation or file write fails.
-fn write_file(path: &Path, content: &str) -> anyhow::Result<()> {
-    if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent)
-            .with_context(|| format!("failed to create directory '{}'", parent.display()))?;
-    }
-    std::fs::write(path, content).with_context(|| format!("failed to write '{}'", path.display()))
-}
-
 /// Resolve the repository argument, prompting interactively when not provided.
 ///
 /// `default_hint` is pre-filled into the interactive prompt when `--repo` is
@@ -117,92 +100,13 @@ fn resolve_repo(
     }
 }
 
-/// Check whether `path` needs to be (over)written with `new_content`.
-///
-/// - If the file does not exist, returns `Ok(true)` (safe to write).
-/// - If `force` is set, returns `Ok(true)` (skip all checks).
-/// - If the file exists and its content equals `new_content`, prints an
-///   "already up to date" message and returns `Ok(false)`.
-/// - If not a TTY, returns an error suggesting `--force`.
-/// - Otherwise, shows a unified diff and prompts the user interactively.
-///
-/// # Errors
-///
-/// Returns an error when reading the existing file fails, the prompt is
-/// cancelled, or the terminal is non-interactive without `--force`.
-fn confirm_overwrite_with_diff(
-    path: &Path,
-    new_content: &str,
-    force: bool,
-) -> anyhow::Result<bool> {
-    if !path.exists() {
-        return Ok(true);
-    }
-    if force {
-        return Ok(true);
-    }
-
-    let existing = std::fs::read_to_string(path)
-        .with_context(|| format!("failed to read '{}'", path.display()))?;
-
-    if existing == new_content {
-        let mut stdout = io::stdout();
-        writeln!(stdout, "'{}' is already up to date.", path.display())
-            .context("failed to write to stdout")?;
-        return Ok(false);
-    }
-
-    if !io::stdin().is_terminal() {
-        anyhow::bail!(
-            "'{}' already exists; use --force to overwrite",
-            path.display()
-        );
-    }
-
-    // Display a unified diff between the existing and new content.
-    let diff = similar::TextDiff::from_lines(existing.as_str(), new_content);
-    let mut stdout = io::stdout();
-    writeln!(
-        stdout,
-        "--- {} (existing)\n+++ {} (new)",
-        path.display(),
-        path.display()
-    )
-    .context("failed to write to stdout")?;
-    for group in diff.grouped_ops(3) {
-        for op in &group {
-            for change in diff.iter_changes(op) {
-                let line = change.value().trim_end_matches('\n');
-                let styled = match change.tag() {
-                    similar::ChangeTag::Delete => {
-                        console::style(format!("-{line}")).red().to_string()
-                    }
-                    similar::ChangeTag::Insert => {
-                        console::style(format!("+{line}")).green().to_string()
-                    }
-                    similar::ChangeTag::Equal => format!(" {line}"),
-                };
-                writeln!(stdout, "{styled}").context("failed to write to stdout")?;
-            }
-        }
-    }
-
-    let confirmed = dialoguer::Confirm::new()
-        .with_prompt(format!("Overwrite '{}'?", path.display()))
-        .default(false)
-        .interact()
-        .context("confirmation prompt cancelled")?;
-
-    Ok(confirmed)
-}
-
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
 /// Execute the `init` subcommand.
 ///
-/// Writes files appropriate to the selected mode (upstream or downstream).
+/// Generates `config.yaml` and `schema.json` for a template (upstream) project.
 #[cfg_attr(coverage_nightly, coverage(off))]
 pub fn execute(args: &InitArgs) -> ExitCode {
     match run(args, &GhFetcher::new(), &SystemGhRunner) {
@@ -214,22 +118,18 @@ pub fn execute(args: &InitArgs) -> ExitCode {
     }
 }
 
-/// Core logic for `init`, dispatching to upstream or downstream mode.
+/// Core logic for `init`.
 ///
 /// # Errors
 ///
-/// Returns an error when the selected mode fails.
+/// Returns an error when upstream initialization fails.
 #[cfg_attr(coverage_nightly, coverage(off))]
 pub fn run(
     args: &InitArgs,
     fetcher: &dyn crate::sync::upstream::UpstreamFetcher,
     runner: &dyn GhRunner,
 ) -> anyhow::Result<()> {
-    if args.upstream {
-        run_upstream(args, fetcher, runner)
-    } else {
-        run_downstream(args, fetcher, runner)
-    }
+    run_upstream(args, fetcher, runner)
 }
 
 /// Upstream mode: generate `config.yaml` + `schema.json` for a template project.
@@ -279,7 +179,7 @@ fn run_upstream(
     let repo = resolve_repo(
         args,
         "Upstream repository (owner/name)",
-        "graft init --upstream --repo owner/name --select",
+        "graft init --repo owner/name --select",
         hint.as_deref(),
     )?;
 
@@ -291,7 +191,7 @@ fn run_upstream(
     } else {
         anyhow::bail!(
             "no mode specified; use --select\n\
-             example: graft init --upstream --repo owner/name --select"
+             example: graft init --repo owner/name --select"
         );
     };
 
@@ -334,81 +234,12 @@ fn run_upstream(
     Ok(())
 }
 
-/// Downstream mode: generate the GitHub Actions workflow file and optionally
-/// a Claude Code skill file.
-///
-/// # Errors
-///
-/// Returns an error when the repo cannot be determined, the SHA cannot be
-/// resolved, or file writes fail.
-#[cfg_attr(coverage_nightly, coverage(off))]
-fn run_downstream(
-    args: &InitArgs,
-    fetcher: &dyn crate::sync::upstream::UpstreamFetcher,
-    runner: &dyn GhRunner,
-) -> anyhow::Result<()> {
-    // -----------------------------------------------------------------------
-    // 1. Determine repo (detect fork/template parent as default hint)
-    // -----------------------------------------------------------------------
-    let hint = detect::detect_repo_hint(runner, true);
-    let repo = resolve_repo(
-        args,
-        "Upstream template repository (owner/name)",
-        "graft init --downstream --repo owner/name",
-        hint.as_deref(),
-    )?;
-
-    // -----------------------------------------------------------------------
-    // 2. Resolve SHA and render workflow
-    // -----------------------------------------------------------------------
-    let version = concat!("v", env!("CARGO_PKG_VERSION"));
-
-    let sha = fetcher
-        .resolve_tag_sha("naa0yama/graft", version)
-        .with_context(|| format!("failed to resolve SHA for naa0yama/graft@{version}"))?;
-
-    let upstream_manifest = format!("{repo}@{}:.github/graft/config.yaml", args.ref_);
-    let rendered = workflow::render(version, &sha, Some(&upstream_manifest));
-
-    // -----------------------------------------------------------------------
-    // 3. Write workflow file
-    // -----------------------------------------------------------------------
-    let workflow_path = Path::new(workflow::WORKFLOW_PATH);
-    let mut stdout = io::stdout();
-
-    if confirm_overwrite_with_diff(workflow_path, &rendered, args.force)? {
-        workflow::write_workflow_from_content(workflow_path, &rendered)?;
-        writeln!(stdout, "[OK] created '{}'", workflow_path.display())
-            .context("failed to write to stdout")?;
-    }
-
-    // -----------------------------------------------------------------------
-    // 4. Optionally write Claude Code skill file
-    // -----------------------------------------------------------------------
-    if args.with_skill {
-        let skill_path = Path::new(skill::SKILL_PATH);
-        let skill_content = skill::render();
-
-        if confirm_overwrite_with_diff(skill_path, &skill_content, args.force)? {
-            skill::write_skill_from_content(skill_path, &skill_content)?;
-            writeln!(stdout, "[OK] created '{}'", skill_path.display())
-                .context("failed to write to stdout")?;
-        }
-    }
-
-    Ok(())
-}
-
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::unwrap_used)]
-
-    use tempfile::TempDir;
-
     use super::*;
 
     // ---------------------------------------------------------------------------
@@ -437,54 +268,5 @@ mod tests {
     fn valid_repo_rejects_empty_segments() {
         assert!(!is_valid_repo("/name"));
         assert!(!is_valid_repo("owner/"));
-    }
-
-    // ---------------------------------------------------------------------------
-    // confirm_overwrite_with_diff
-    // ---------------------------------------------------------------------------
-
-    #[test]
-    fn confirm_overwrite_returns_true_when_file_absent() {
-        let dir = TempDir::new().unwrap();
-        let path = dir.path().join("nonexistent.yaml");
-        let result = confirm_overwrite_with_diff(&path, "new content", false).unwrap();
-        assert!(result, "should return true when file does not exist");
-    }
-
-    #[test]
-    fn confirm_overwrite_returns_true_with_force() {
-        let dir = TempDir::new().unwrap();
-        let path = dir.path().join("existing.yaml");
-        std::fs::write(&path, b"old content").unwrap();
-        let result = confirm_overwrite_with_diff(&path, "new content", true).unwrap();
-        assert!(result, "should return true when force=true");
-    }
-
-    #[test]
-    fn confirm_overwrite_returns_false_when_identical() {
-        let dir = TempDir::new().unwrap();
-        let path = dir.path().join("same.yaml");
-        std::fs::write(&path, b"same content").unwrap();
-        // Non-TTY is fine here because identical content exits early.
-        let result = confirm_overwrite_with_diff(&path, "same content", false).unwrap();
-        assert!(!result, "should return false when content is identical");
-    }
-
-    #[test]
-    fn confirm_overwrite_errors_on_non_tty_with_diff() {
-        // In test environment stdin is not a TTY, so differing content should error.
-        let dir = TempDir::new().unwrap();
-        let path = dir.path().join("changed.yaml");
-        std::fs::write(&path, b"old content").unwrap();
-        let result = confirm_overwrite_with_diff(&path, "new content", false);
-        assert!(
-            result.is_err(),
-            "should error in non-TTY with differing content"
-        );
-        let msg = result.unwrap_err().to_string();
-        assert!(
-            msg.contains("--force"),
-            "error should mention --force, got: {msg}"
-        );
     }
 }
