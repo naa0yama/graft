@@ -771,6 +771,14 @@ fn cmd_up(docker: &dyn DockerRunner) -> anyhow::Result<()> {
             "--mount=type=bind,source={pubring_str},target=/home/cuser/.gnupg/pubring.kbx,readonly"
         )));
     }
+    // GPG trust database (readonly — needed for correct key trust display)
+    let trustdb = Path::new(&gpg_home).join("trustdb.gpg");
+    if trustdb.exists() {
+        let trustdb_str = trustdb.to_string_lossy();
+        run_args.push(serde_json::json!(format!(
+            "--mount=type=bind,source={trustdb_str},target=/home/cuser/.gnupg/trustdb.gpg,readonly"
+        )));
+    }
 
     // Merge runArgs into the already-parsed devcontainer config
     let mut config = dc.config;

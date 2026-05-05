@@ -135,13 +135,25 @@ ENV CARGO_HOME=/home/${USER_NAME}/.cargo
 RUN echo "**** Directory Create ****" && \
 	set -euxo pipefail && \
 	mkdir -p \
+	~/.claude \
 	~/.config \
+	~/.config/gh \
 	~/.config/mise \
+	~/.gitconfig.d \
+	~/.gnupg \
 	~/.local \
 	~/.local/bin \
 	~/.local/share \
 	~/.local/share/claude \
-	~/.local/share/mise
+	~/.local/share/mise \
+	~/.ssh \
+	\
+	&& \
+	chmod 700 ~/.gnupg ~/.ssh && \
+	touch \
+	~/.claude.json \
+	~/.gitconfig \
+	~/.gnupg/pubring.kbx
 
 RUN echo "**** Create ${CARGO_HOME} ****" && \
 	set -euxo pipefail && \
@@ -183,4 +195,3 @@ alias cc="claude --dangerously-skip-permissions"
 
 _DOC_
 EOF
-
