@@ -1,5 +1,9 @@
 # Changelog
 
+## [v0.5.3](https://github.com/naa0yama/graft/compare/v0.5.2...v0.5.3) - 2026-05-05
+### Documentation 🗒️
+- chore: backport infra from boilerplate-rust and fix GPG forwarding by @naa0yama in https://github.com/naa0yama/graft/pull/125
+
 ## [v0.5.2](https://github.com/naa0yama/graft/compare/v0.5.1...v0.5.2) - 2026-05-05
 
 ### Bug Fixes 🐌
