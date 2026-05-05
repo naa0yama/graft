@@ -63,6 +63,10 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 	sudo \
 	wget
 
+# graft:keep-start
+# Project-specific dependencies are listed here.
+
+# graft:keep-end
 
 RUN echo "**** Create user ****" && \
 	set -euxo pipefail && \
@@ -74,6 +78,12 @@ RUN echo "**** Create user ****" && \
 RUN echo "**** Add sudo user ****" && \
 	set -euxo pipefail && \
 	echo -e "${USER_NAME}\tALL=(ALL) NOPASSWD:ALL" > "/etc/sudoers.d/${USER_NAME}"
+
+RUN echo "**** Create XDG runtime dir ****" && \
+	set -euxo pipefail && \
+	mkdir -p /run/user/${USER_UID}/gnupg && \
+	chown -R ${USER_NAME}:${USER_NAME} /run/user/${USER_UID} && \
+	chmod 700 /run/user/${USER_UID} /run/user/${USER_UID}/gnupg
 
 RUN echo "**** Install mold ****" && \
 	set -euxo pipefail && \
@@ -125,8 +135,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 	echo "**** Dependencies ****" && \
 	set -euxo pipefail && \
 	apt-get -y install --no-install-recommends \
-	shellcheck \
-	tmux
+	shellcheck
 
 # User level settings
 USER ${USER_NAME}
@@ -191,7 +200,14 @@ case ":$PATH:" in
 	*:"$HOME/.local/bin":*) ;;
 	*) export PATH="$HOME/.local/bin:$PATH" ;;
 esac
+export XDG_RUNTIME_DIR="/run/user/$(id -u)"
+export GPG_TTY=$(tty 2>/dev/null || true)
 alias cc="claude --dangerously-skip-permissions"
 
 _DOC_
 EOF
+
+# graft:keep-start
+# Project-specific dependencies are listed here.
+
+# graft:keep-end

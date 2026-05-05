@@ -68,7 +68,7 @@ set-window-option -g pane-border-format \
 ```
 
 ブランチ切り替えの追従は `.githooks/post-checkout` が担当します。
-devcontainer 内でも動作するよう、コンテナへの tmux ソケット転送と tmux パッケージが組み込まれています。
+devcontainer 内でも動作するよう、コンテナへの tmux ソケット転送と `mise` 経由の `tmux` インストールが組み込まれています。
 
 ## 使い方
 
