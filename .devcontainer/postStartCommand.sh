@@ -72,7 +72,8 @@ if [ -S "${_gpg_rtdir}/gnupg/S.gpg-agent" ] && \
 fi
 unset _gpg_rtdir _gpg_home
 
-# SSH: populate known_hosts with github.com host keys inside the container
+# SSH: always refresh known_hosts with current github.com host keys.
+# Overwrites any previous content; ~/.ssh may not exist if the bind-mount was not set up.
 mkdir -p ~/.ssh && chmod 700 ~/.ssh
 ssh-keyscan -H github.com > ~/.ssh/known_hosts 2>/dev/null
 chmod 600 ~/.ssh/known_hosts
@@ -95,3 +96,4 @@ mise run o2
 # Project-specific dependencies are listed here.
 
 # graft:keep-end
+

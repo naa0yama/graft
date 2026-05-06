@@ -10,6 +10,12 @@ use std::process::ExitCode;
 
 use anyhow::Context as _;
 
+struct TraefikRelease {
+    tag: String,
+    asset_url: String,
+    digest: String,
+}
+
 use cli::{TraefikArgs, TraefikCommand};
 use config::{
     TRAEFIK_PORT_DASHBOARD, TRAEFIK_PORT_ROUTER, traefik_bin, traefik_config, traefik_dynamic_dir,
@@ -311,54 +317,104 @@ fn traefik_installed_version() -> Option<String> {
 }
 
 #[cfg_attr(coverage_nightly, coverage(off))]
-fn traefik_latest() -> anyhow::Result<String> {
+fn traefik_latest() -> anyhow::Result<TraefikRelease> {
+    let arch = match std::env::consts::ARCH {
+        "x86_64" => "amd64",
+        "aarch64" => "arm64",
+        a => anyhow::bail!("unsupported architecture: {a}"),
+    };
     let out = std::process::Command::new("curl")
         .args([
             "-sfSL",
             "--retry",
             "3",
-            "https://api.github.com/repos/traefik/traefik/releases/latest",
+            "https://api.github.com/repos/traefik/traefik/releases?per_page=30",
         ])
         .output()
         .context("curl github API")?;
     if !out.status.success() {
         anyhow::bail!("curl failed: {}", String::from_utf8_lossy(&out.stderr));
     }
-    let v: serde_json::Value =
+    let releases: serde_json::Value =
         serde_json::from_slice(&out.stdout).context("parse github releases JSON")?;
-    v.get("tag_name")
-        .and_then(|t| t.as_str())
-        .map(ToOwned::to_owned)
-        .context("tag_name not found in github releases response")
+    let releases = releases.as_array().context("expected JSON array")?;
+
+    let now = jiff::Timestamp::now();
+    let min_age = jiff::SignedDuration::from_hours(7 * 24);
+
+    for release in releases {
+        let Some(tag) = release.get("tag_name").and_then(|t| t.as_str()) else {
+            continue;
+        };
+        if !tag.starts_with("v3.") {
+            continue;
+        }
+        if release
+            .get("draft")
+            .and_then(serde_json::Value::as_bool)
+            .unwrap_or(false)
+        {
+            continue;
+        }
+        if release
+            .get("prerelease")
+            .and_then(serde_json::Value::as_bool)
+            .unwrap_or(false)
+        {
+            continue;
+        }
+        let published_at = release
+            .get("published_at")
+            .and_then(|v| v.as_str())
+            .context("missing published_at")?;
+        let ts: jiff::Timestamp = published_at
+            .parse()
+            .with_context(|| format!("parse published_at: {published_at}"))?;
+        if now.duration_since(ts) < min_age {
+            continue;
+        }
+        let expected_name = format!("traefik_{tag}_linux_{arch}.tar.gz");
+        let assets = release
+            .get("assets")
+            .and_then(|a| a.as_array())
+            .context("missing assets")?;
+        let asset = assets
+            .iter()
+            .find(|a| a.get("name").and_then(|n| n.as_str()) == Some(expected_name.as_str()))
+            .with_context(|| format!("{expected_name} not found in release assets"))?;
+        let asset_url = asset
+            .get("browser_download_url")
+            .and_then(|u| u.as_str())
+            .context("missing browser_download_url")?
+            .to_owned();
+        let digest = asset
+            .get("digest")
+            .and_then(|d| d.as_str())
+            .context("missing digest")?
+            .strip_prefix("sha256:")
+            .context("digest is not sha256")?
+            .to_owned();
+        return Ok(TraefikRelease {
+            tag: tag.to_owned(),
+            asset_url,
+            digest,
+        });
+    }
+    anyhow::bail!("no stable traefik v3 release older than 7 days found")
 }
 
 #[cfg_attr(coverage_nightly, coverage(off))]
-fn traefik_install_version(version: &str) -> anyhow::Result<()> {
-    let arch = match std::env::consts::ARCH {
-        "x86_64" => "amd64",
-        "aarch64" => "arm64",
-        a => anyhow::bail!("unsupported architecture: {a}"),
-    };
-    let filename = format!("traefik_{version}_linux_{arch}.tar.gz");
-    let url = format!("https://github.com/traefik/traefik/releases/download/{version}/{filename}");
-    let checksums_url = format!(
-        "https://github.com/traefik/traefik/releases/download/{version}/traefik_{version}_checksums.txt"
-    );
+fn traefik_install_version(release: &TraefikRelease) -> anyhow::Result<()> {
+    let version = &release.tag;
 
     let tmpfile = tempfile::NamedTempFile::new().context("create temp file")?;
-    let checksums_file = tempfile::NamedTempFile::new().context("create checksums temp file")?;
     let tmpfile_path = tmpfile
         .path()
         .to_str()
         .context("temp file path not UTF-8")?
         .to_owned();
-    let checksums_path = checksums_file
-        .path()
-        .to_str()
-        .context("checksums temp file path not UTF-8")?
-        .to_owned();
 
-    tracing::info!("Downloading traefik {version} ({arch})...");
+    tracing::info!("Downloading traefik {version}...");
     let status = std::process::Command::new("curl")
         .args([
             "-fSL",
@@ -369,38 +425,13 @@ fn traefik_install_version(version: &str) -> anyhow::Result<()> {
             "--retry-connrefused",
             "-o",
             &tmpfile_path,
-            &url,
+            &release.asset_url,
         ])
         .status()
         .context("curl download")?;
     anyhow::ensure!(status.success(), "failed to download traefik {version}");
 
     tracing::info!("Verifying checksum...");
-    let status = std::process::Command::new("curl")
-        .args([
-            "-fSL",
-            "--retry",
-            "3",
-            "--retry-delay",
-            "2",
-            "--retry-connrefused",
-            "-o",
-            &checksums_path,
-            &checksums_url,
-        ])
-        .status()
-        .context("curl checksums")?;
-    anyhow::ensure!(status.success(), "failed to download checksums file");
-
-    let checksums =
-        std::fs::read_to_string(checksums_file.path()).context("read checksums file")?;
-    let expected = checksums
-        .lines()
-        .find(|l| l.ends_with(&filename))
-        .and_then(|l| l.split_whitespace().next())
-        .with_context(|| format!("{filename} not found in checksums"))?
-        .to_owned();
-
     let sha_out = std::process::Command::new("sha256sum")
         .arg(tmpfile.path())
         .output()
@@ -411,10 +442,10 @@ fn traefik_install_version(version: &str) -> anyhow::Result<()> {
         .next()
         .context("sha256sum empty output")?
         .to_owned();
-
     anyhow::ensure!(
-        expected == actual,
-        "checksum mismatch (expected {expected}, got {actual})"
+        release.digest == actual,
+        "checksum mismatch (expected {}, got {actual})",
+        release.digest
     );
 
     let bin_dir = traefik_bin()
@@ -464,10 +495,18 @@ fn traefik_ensure_latest() -> anyhow::Result<&'static str> {
             traefik_install_version(&latest)?;
             Ok("installed")
         }
-        Some(v) if v != latest => {
-            tracing::info!("Updating traefik {v} -> {latest}");
-            traefik_install_version(&latest)?;
-            Ok("updated")
+        Some(ref v) if v != &latest.tag => {
+            tracing::info!("Updating traefik {v} -> {}", latest.tag);
+            match traefik_install_version(&latest) {
+                Ok(()) => Ok("updated"),
+                Err(e) => {
+                    tracing::warn!(
+                        "failed to update traefik to {}: {e:#}; continuing with {v}",
+                        latest.tag
+                    );
+                    Ok("already-latest")
+                }
+            }
         }
         _ => {
             tracing::info!(

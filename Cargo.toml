@@ -32,6 +32,7 @@ graft-manifest = { path = "crates/graft-manifest" }
 clap = { version = "4.5.45", default-features = false, features = ["std", "derive", "help", "usage", "error-context", "color", "suggestions"] }
 
 ## Data
+jiff = "0.2"
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.137"
 serde_yml = "0.0.12"

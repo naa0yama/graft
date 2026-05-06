@@ -33,21 +33,18 @@ commit / PR 操作はこのコマンドでは行わない — skill 経由で Cl
 
 ## 4. `graft init` フラグ
 
-| フラグ         | 短縮 | 型   | デフォルト                  | 説明                                                                           |
-| -------------- | ---- | ---- | --------------------------- | ------------------------------------------------------------------------------ |
-| `--repo`       | `-r` | str  | —(TTY の場合はプロンプト)   | 対象リポジトリ(`owner/name` 形式)                                              |
-| `--ref`        |      | str  | `main`                      | 取得元の git ref                                                               |
-| `--upstream`   |      | bool | false                       | upstream モード: `config.yaml` と `schema.json` を生成 (`--downstream` と排他) |
-| `--downstream` |      | bool | false                       | downstream モード: `graft.yaml` ワークフローを生成 (`--upstream` と排他)       |
-| `--select`     |      | bool | false                       | upstream のファイル一覧から対話的に選択 (`--upstream` 専用)                    |
-| `--with-skill` |      | bool | false                       | `.claude/skills/graft/SKILL.md` を生成 (`--downstream` 専用)                   |
-| `--output`     | `-o` | Path | `.github/graft/config.yaml` | 出力先パス (`--upstream` 専用)                                                 |
-| `--force`      |      | bool | false                       | 既存ファイルを確認なしで上書き                                                 |
+| フラグ       | 短縮 | 型   | デフォルト                  | 説明                                                        |
+| ------------ | ---- | ---- | --------------------------- | ----------------------------------------------------------- |
+| `--repo`     | `-r` | str  | —(TTY の場合はプロンプト)   | 対象リポジトリ(`owner/name` 形式)                           |
+| `--ref`      |      | str  | `main`                      | 取得元の git ref                                            |
+| `--upstream` |      | bool | false                       | upstream モード: `config.yaml` と `schema.json` を生成      |
+| `--select`   |      | bool | false                       | upstream のファイル一覧から対話的に選択 (`--upstream` 専用) |
+| `--output`   | `-o` | Path | `.github/graft/config.yaml` | 出力先パス (`--upstream` 専用)                              |
+| `--force`    |      | bool | false                       | 既存ファイルを確認なしで上書き                              |
 
-`--upstream` と `--downstream` はどちらか一方が必須(相互排他)。
+`--upstream` は必須。
 
 - `--upstream` モード: `config.yaml` と `schema.json` を生成する。ワークフローや skill ファイルは生成しない。
-- `--downstream` モード: `.github/workflows/graft.yaml` を生成する。`config.yaml` は生成しない。`--with-skill` を指定すると、さらに `.claude/skills/graft/SKILL.md` を生成し、marker 記法の使い方を Claude Code に伝えるスキルファイルを追加する。
 
 config ファイルと同ディレクトリに `schema.json` (JSON Schema) を生成し、
 yaml-language-server 対応エディタで補完・バリデーションが有効になる(`--upstream` モードのみ)。

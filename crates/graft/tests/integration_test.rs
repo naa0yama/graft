@@ -80,47 +80,15 @@ fn test_cli_init_help() {
     cmd.args(["init", "--help"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("upstream"))
-        .stdout(predicate::str::contains("downstream"))
-        .stdout(predicate::str::contains("with-skill"));
+        .stdout(predicate::str::contains("select"));
 }
 
 #[test]
 #[cfg_attr(miri, ignore)]
-fn test_cli_init_requires_mode_flag() {
-    // init without --upstream or --downstream must fail
+fn test_cli_init_non_interactive_requires_select() {
+    // init without --select in non-TTY must fail (no mode specified)
     let mut cmd = cargo_bin_cmd!("graft");
     cmd.args(["init", "--repo", "owner/name"])
-        .assert()
-        .failure();
-}
-
-#[test]
-#[cfg_attr(miri, ignore)]
-fn test_cli_init_upstream_and_downstream_conflict() {
-    // --upstream and --downstream are mutually exclusive
-    let mut cmd = cargo_bin_cmd!("graft");
-    cmd.args(["init", "--upstream", "--downstream"])
-        .assert()
-        .failure();
-}
-
-#[test]
-#[cfg_attr(miri, ignore)]
-fn test_cli_init_downstream_select_conflict() {
-    // --select is upstream-only; combining with --downstream must fail
-    let mut cmd = cargo_bin_cmd!("graft");
-    cmd.args(["init", "--downstream", "--select"])
-        .assert()
-        .failure();
-}
-
-#[test]
-#[cfg_attr(miri, ignore)]
-fn test_cli_init_upstream_with_skill_conflict() {
-    // --with-skill is downstream-only; combining with --upstream must fail
-    let mut cmd = cargo_bin_cmd!("graft");
-    cmd.args(["init", "--upstream", "--with-skill"])
         .assert()
         .failure();
 }

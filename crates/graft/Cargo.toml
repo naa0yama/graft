@@ -46,6 +46,7 @@ dialoguer.workspace = true
 similar.workspace = true
 
 # JSON / API response parsing
+jiff.workspace = true
 serde_json.workspace = true
 
 # Logging
