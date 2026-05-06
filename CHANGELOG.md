@@ -1,5 +1,22 @@
 # Changelog
 
+## [v0.5.4](https://github.com/naa0yama/graft/compare/v0.5.3...v0.5.4) - 2026-05-06
+
+### Features 🎉
+
+- refactor: simplify commit-msg hook and bump graft to v0.5.3 by @naa0yama in https://github.com/naa0yama/graft/pull/131
+
+### Bug Fixes 🐌
+
+- fix(denv): resolve stable traefik v3 release with 7-day age filter by @naa0yama in https://github.com/naa0yama/graft/pull/134
+
+### Development Environment 🔧
+
+- chore(deps): update taiki-e/install-action action to v2.75.24 by @renovate[bot] in https://github.com/naa0yama/graft/pull/128
+- chore(deps): update dependency jdx/mise to v2026.4.25 by @renovate[bot] in https://github.com/naa0yama/graft/pull/127
+- chore(deps): update dependency openobserve/openobserve to v0.80.1 by @renovate[bot] in https://github.com/naa0yama/graft/pull/132
+- chore(deps): update taiki-e/install-action action to v2.75.25 by @renovate[bot] in https://github.com/naa0yama/graft/pull/133
+
 ## [v0.5.3](https://github.com/naa0yama/graft/compare/v0.5.2...v0.5.3) - 2026-05-05
 
 ### Documentation 🗒️
