@@ -1,5 +1,22 @@
 # Changelog
 
+## [v0.5.5](https://github.com/naa0yama/graft/compare/v0.5.4...v0.5.5) - 2026-05-09
+
+### Features 🎉
+
+- refactor(denv): redesign container lifecycle with graceful stop by @naa0yama in https://github.com/naa0yama/graft/pull/144
+
+### Development Environment 🔧
+
+- chore(deps): update taiki-e/install-action action to v2.75.26 by @renovate[bot] in https://github.com/naa0yama/graft/pull/135
+- chore(deps): update dependency mozilla/sccache to v0.15.0 by @renovate[bot] in https://github.com/naa0yama/graft/pull/136
+- chore(deps): update dependency jdx/mise to v2026.4.27 by @renovate[bot] in https://github.com/naa0yama/graft/pull/138
+- chore(deps): update taiki-e/install-action action to v2.75.27 by @renovate[bot] in https://github.com/naa0yama/graft/pull/139
+- chore(deps): update dependency jdx/mise to v2026.4.28 by @renovate[bot] in https://github.com/naa0yama/graft/pull/140
+- chore(deps): update dependency ghalint to v1.5.6 by @renovate[bot] in https://github.com/naa0yama/graft/pull/141
+- chore(deps): update github/codeql-action action to v4.35.3 by @renovate[bot] in https://github.com/naa0yama/graft/pull/142
+- chore(deps): update taiki-e/install-action action to v2.75.28 by @renovate[bot] in https://github.com/naa0yama/graft/pull/143
+
 ## [v0.5.4](https://github.com/naa0yama/graft/compare/v0.5.3...v0.5.4) - 2026-05-06
 
 ### Features 🎉
