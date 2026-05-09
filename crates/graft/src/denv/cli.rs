@@ -12,7 +12,7 @@ pub struct DenvArgs {
 pub enum DenvCommand {
     /// Start devcontainer with Traefik routing
     Up,
-    /// Stop and remove devcontainer, clean up routes
+    /// Full reset: stop container, remove container, remove image, clean up Traefik routes
     Down,
     /// Attach to running devcontainer (starts if not running)
     Exec,
