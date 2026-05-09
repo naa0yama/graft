@@ -76,7 +76,7 @@ graft denv [subcommand]
 
 Subcommands:
   up       Traefik ルーティング付きで devcontainer を起動し、コンテナ内シェルに接続
-  down     devcontainer を停止・削除し、Traefik ルートを解除
+  down     コンテナを停止・削除・イメージ削除し、Traefik ルートを解除 (フルリセット)
   exec     実行中の devcontainer に接続 (未起動の場合は up を実行)
   status   Traefik FQDN 付きで実行中の devcontainer 一覧を表示
   traefik  Traefik リバースプロキシのセットアップ

@@ -582,36 +582,46 @@ fn container_network_ip(
 // ---------------------------------------------------------------------------
 
 #[cfg_attr(coverage_nightly, coverage(off))]
-fn exec_and_watch(docker: &dyn DockerRunner, workspace: &str) -> anyhow::Result<()> {
+fn exec_and_watch(docker: &dyn DockerRunner, workspace: &str, cleanup: bool) -> anyhow::Result<()> {
     std::process::Command::new("devcontainer")
         .args(["exec", "--workspace-folder", workspace, "bash"])
         .status()
         .context("devcontainer exec bash")?;
 
-    let exited_cid = running_container_id(docker, workspace).unwrap_or_default();
-    let exited_project = project(workspace);
+    if !cleanup {
+        let _ = writeln!(
+            std::io::stdout(),
+            "Shell exited. Container still running. (mise run dev:exec to reconnect, mise run dev:down to stop)"
+        );
+        return Ok(());
+    }
+
+    // dev:up owner session: stop gracefully, remove routes, clean up old stopped containers.
+    let cid = running_container_id(docker, workspace).unwrap_or_default();
+    let proj = project(workspace);
+    let dynamic_dir = traefik_dynamic_dir();
+
+    let _ = writeln!(std::io::stdout(), "Shell exited. Stopping container...");
+
+    if !cid.is_empty() {
+        let _ = docker.run(&["stop", &cid]);
+        remove_routes(&cid, &proj, &dynamic_dir).unwrap_or(());
+    }
+
+    // Remove any other stopped containers left from previous sessions.
+    let all_cids = container_id(docker, workspace).unwrap_or_default();
+    for old_cid in &all_cids {
+        if old_cid.is_empty() || old_cid == &cid {
+            continue;
+        }
+        remove_routes(old_cid, &proj, &dynamic_dir).unwrap_or(());
+        let _ = docker.run(&["rm", old_cid]);
+    }
 
     let _ = writeln!(
         std::io::stdout(),
-        "Shell exited. Container stopping in 10s... (mise run dev:exec to reconnect)"
+        "Container stopped. Use 'mise run dev:exec' to reconnect."
     );
-
-    if !exited_cid.is_empty() {
-        let dynamic_dir = traefik_dynamic_dir();
-        let routes_file = dynamic_dir.join(format!(
-            "{exited_project}-{}.yml",
-            &exited_cid[..exited_cid.len().min(12)]
-        ));
-        let routes_path = routes_file.to_string_lossy().into_owned();
-        // Spawn background cleanup without waiting — the sh process detaches after 10s.
-        std::process::Command::new("sh")
-            .arg("-c")
-            .arg(format!(
-                "sleep 10 && rm -f {routes_path} && docker rm -f {exited_cid} > /dev/null 2>&1 || true"
-            ))
-            .spawn()
-            .context("spawn background cleanup")?;
-    }
     Ok(())
 }
 
@@ -717,7 +727,7 @@ fn cmd_up(docker: &dyn DockerRunner) -> anyhow::Result<()> {
         _ => {}
     }
 
-    cmd_down(docker)?;
+    cleanup_stopped_containers(docker)?;
     ensure_network(docker)?;
 
     let ws = workspace()?;
@@ -917,8 +927,32 @@ fn cmd_up(docker: &dyn DockerRunner) -> anyhow::Result<()> {
     let _ = writeln!(out, "==================================================");
     let _ = writeln!(out);
 
-    exec_and_watch(docker, &ws)?;
+    exec_and_watch(docker, &ws, true)?;
     tmux.clear_session();
+    Ok(())
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+fn cleanup_stopped_containers(docker: &dyn DockerRunner) -> anyhow::Result<()> {
+    let ws = workspace()?;
+    let proj = project(&ws);
+    let cids = container_id(docker, &ws)?;
+    let dynamic_dir = traefik_dynamic_dir();
+
+    for cid in &cids {
+        if cid.is_empty() {
+            continue;
+        }
+        remove_routes(cid, &proj, &dynamic_dir)?;
+        // stop if still running (e.g. leftover from a previous dev:up), then rm
+        let _ = docker.run(&["stop", cid]);
+        run_checked(docker, &["rm", cid])
+            .with_context(|| format!("failed to remove container {cid}"))?;
+        let _ = writeln!(
+            std::io::stdout(),
+            "Cleaned up previous container: {proj} ({cid})"
+        );
+    }
     Ok(())
 }
 
@@ -941,10 +975,32 @@ fn cmd_down(docker: &dyn DockerRunner) -> anyhow::Result<()> {
         if cid.is_empty() {
             continue;
         }
+        let image_id = docker
+            .run(&["inspect", cid, "--format", "{{.Image}}"])
+            .ok()
+            .and_then(|o| o.stdout_str().ok())
+            .map(|s| s.trim().to_owned())
+            .filter(|s| !s.is_empty());
+
         remove_routes(cid, &proj, &dynamic_dir)?;
         run_checked(docker, &["rm", "-f", cid])
             .with_context(|| format!("failed to remove container {cid}"))?;
-        let _ = writeln!(std::io::stdout(), "Stopped: {proj} ({cid})");
+        let _ = writeln!(std::io::stdout(), "Removed: {proj} ({cid})");
+
+        // Remove the devcontainer image. Fails silently if still in use elsewhere.
+        if let Some(ref img) = image_id {
+            match docker.run(&["rmi", img]) {
+                Ok(out) if out.exit_code == 0 => {
+                    let _ = writeln!(std::io::stdout(), "Removed image: {img}");
+                }
+                _ => {
+                    let _ = writeln!(
+                        std::io::stdout(),
+                        "Image not removed (in use or already gone): {img}"
+                    );
+                }
+            }
+        }
     }
     Ok(())
 }
@@ -968,7 +1024,7 @@ fn cmd_exec(docker: &dyn DockerRunner) -> anyhow::Result<()> {
         let br = branch(&ws)?;
         let proj = project(&ws);
         tmux.set_session(&proj, &br, &ws);
-        exec_and_watch(docker, &ws)?;
+        exec_and_watch(docker, &ws, false)?;
         tmux.clear_session();
     }
     Ok(())
