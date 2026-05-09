@@ -1,9 +1,13 @@
 # Changelog
 
 ## [v0.5.5](https://github.com/naa0yama/graft/compare/v0.5.4...v0.5.5) - 2026-05-09
+
 ### Features 🎉
+
 - refactor(denv): redesign container lifecycle with graceful stop by @naa0yama in https://github.com/naa0yama/graft/pull/144
+
 ### Development Environment 🔧
+
 - chore(deps): update taiki-e/install-action action to v2.75.26 by @renovate[bot] in https://github.com/naa0yama/graft/pull/135
 - chore(deps): update dependency mozilla/sccache to v0.15.0 by @renovate[bot] in https://github.com/naa0yama/graft/pull/136
 - chore(deps): update dependency jdx/mise to v2026.4.27 by @renovate[bot] in https://github.com/naa0yama/graft/pull/138
