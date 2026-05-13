@@ -414,7 +414,6 @@ fn traefik_install_version(release: &TraefikRelease) -> anyhow::Result<()> {
         .context("temp file path not UTF-8")?
         .to_owned();
 
-    tracing::info!("Downloading traefik {version}...");
     let status = std::process::Command::new("curl")
         .args([
             "-fSL",
@@ -490,13 +489,20 @@ fn traefik_ensure_latest() -> anyhow::Result<&'static str> {
             };
         }
     };
+    let _ = writeln!(
+        std::io::stdout(),
+        "local:  {}",
+        installed.as_deref().unwrap_or("not installed")
+    );
+    let _ = writeln!(std::io::stdout(), "latest: {}", latest.tag);
     match installed {
         None => {
+            let _ = writeln!(std::io::stdout(), "Downloading traefik {}...", latest.tag);
             traefik_install_version(&latest)?;
             Ok("installed")
         }
         Some(ref v) if v != &latest.tag => {
-            tracing::info!("Updating traefik {v} -> {}", latest.tag);
+            let _ = writeln!(std::io::stdout(), "Downloading traefik {}...", latest.tag);
             match traefik_install_version(&latest) {
                 Ok(()) => Ok("updated"),
                 Err(e) => {
@@ -509,7 +515,8 @@ fn traefik_ensure_latest() -> anyhow::Result<&'static str> {
             }
         }
         _ => {
-            tracing::info!(
+            let _ = writeln!(
+                std::io::stdout(),
                 "traefik {}: already at latest",
                 installed.as_deref().unwrap_or("unknown")
             );
