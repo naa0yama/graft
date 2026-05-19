@@ -1,13 +1,19 @@
 # Changelog
 
 ## [v0.5.6](https://github.com/naa0yama/graft/compare/v0.5.5...v0.5.6) - 2026-05-19
+
 ### Features 🎉
+
 - refactor(traefik): replace tracing::info! with writeln! for user output by @naa0yama in https://github.com/naa0yama/graft/pull/157
 - refactor(mise): reorganize tasks and migrate to cargo-nextest by @naa0yama in https://github.com/naa0yama/graft/pull/158
+
 ### Dependency Updates 📦
+
 - chore(deps): lock file maintenance by @renovate[bot] in https://github.com/naa0yama/graft/pull/148
 - chore(deps): update rust crate assert_cmd to v2.2.2 by @renovate[bot] in https://github.com/naa0yama/graft/pull/176
+
 ### Development Environment 🔧
+
 - chore(deps): update taiki-e/install-action action to v2.75.29 by @renovate[bot] in https://github.com/naa0yama/graft/pull/145
 - chore(deps): update taiki-e/install-action action to v2.75.30 by @renovate[bot] in https://github.com/naa0yama/graft/pull/147
 - chore(deps): update dependency jdx/mise to v2026.5.0 by @renovate[bot] in https://github.com/naa0yama/graft/pull/149
