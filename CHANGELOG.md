@@ -1,5 +1,48 @@
 # Changelog
 
+## [v0.5.6](https://github.com/naa0yama/graft/compare/v0.5.5...v0.5.6) - 2026-05-20
+
+### Features 🎉
+
+- refactor(traefik): replace tracing::info! with writeln! for user output by @naa0yama in https://github.com/naa0yama/graft/pull/157
+- refactor(mise): reorganize tasks and migrate to cargo-nextest by @naa0yama in https://github.com/naa0yama/graft/pull/158
+
+### Dependency Updates 📦
+
+- chore(deps): lock file maintenance by @renovate[bot] in https://github.com/naa0yama/graft/pull/148
+- chore(deps): update rust crate assert_cmd to v2.2.2 by @renovate[bot] in https://github.com/naa0yama/graft/pull/176
+
+### Development Environment 🔧
+
+- chore(deps): update taiki-e/install-action action to v2.75.29 by @renovate[bot] in https://github.com/naa0yama/graft/pull/145
+- chore(deps): update taiki-e/install-action action to v2.75.30 by @renovate[bot] in https://github.com/naa0yama/graft/pull/147
+- chore(deps): update dependency jdx/mise to v2026.5.0 by @renovate[bot] in https://github.com/naa0yama/graft/pull/149
+- chore(deps): update taiki-e/install-action action to v2.76.0 by @renovate[bot] in https://github.com/naa0yama/graft/pull/151
+- chore(deps): update taiki-e/install-action action to v2.77.0 by @renovate[bot] in https://github.com/naa0yama/graft/pull/152
+- chore(deps): update dependency openobserve/openobserve to v0.80.2 by @renovate[bot] in https://github.com/naa0yama/graft/pull/153
+- chore(deps): update taiki-e/install-action action to v2.77.1 by @renovate[bot] in https://github.com/naa0yama/graft/pull/154
+- chore(deps): update dependency jdx/mise to v2026.5.1 by @renovate[bot] in https://github.com/naa0yama/graft/pull/155
+- chore(deps): update actions/labeler action to v6.1.0 by @renovate[bot] in https://github.com/naa0yama/graft/pull/156
+- chore(deps): update dependency jdx/mise to v2026.5.2 by @renovate[bot] in https://github.com/naa0yama/graft/pull/160
+- chore(deps): update dependency openobserve/openobserve to v0.80.3 by @renovate[bot] in https://github.com/naa0yama/graft/pull/161
+- chore(deps): update github/codeql-action action to v4.35.4 by @renovate[bot] in https://github.com/naa0yama/graft/pull/162
+- chore(deps): update dependency jdx/mise to v2026.5.3 by @renovate[bot] in https://github.com/naa0yama/graft/pull/163
+- chore(deps): update all action update by @renovate[bot] in https://github.com/naa0yama/graft/pull/164
+- chore(deps): update dependency aqua:taiki-e/cargo-llvm-cov to v0.8.6 by @renovate[bot] in https://github.com/naa0yama/graft/pull/166
+- chore(deps): update dependency aqua:embarkstudios/cargo-deny to v0.19.5 by @renovate[bot] in https://github.com/naa0yama/graft/pull/167
+- chore(deps): update dependency jdx/mise to v2026.5.4 by @renovate[bot] in https://github.com/naa0yama/graft/pull/168
+- chore(deps): update songmu/tagpr action to v1.19.0 by @renovate[bot] in https://github.com/naa0yama/graft/pull/169
+- chore(deps): update taiki-e/install-action action to v2.77.3 by @renovate[bot] in https://github.com/naa0yama/graft/pull/170
+- chore(deps): update dependency jdx/mise to v2026.5.5 by @renovate[bot] in https://github.com/naa0yama/graft/pull/171
+- chore(deps): update taiki-e/install-action action to v2.77.4 by @renovate[bot] in https://github.com/naa0yama/graft/pull/172
+- chore(deps): update dependency aqua:ast-grep/ast-grep to v0.42.2 by @renovate[bot] in https://github.com/naa0yama/graft/pull/173
+- chore(deps): update taiki-e/install-action action to v2.77.5 by @renovate[bot] in https://github.com/naa0yama/graft/pull/174
+- chore(deps): update dependency aqua:embarkstudios/cargo-deny to v0.19.6 by @renovate[bot] in https://github.com/naa0yama/graft/pull/175
+- chore(deps): update dependency jdx/mise to v2026.5.6 by @renovate[bot] in https://github.com/naa0yama/graft/pull/177
+- chore(deps): update taiki-e/install-action action to v2.77.6 by @renovate[bot] in https://github.com/naa0yama/graft/pull/178
+- chore(deps): update taiki-e/install-action action to v2.77.7 by @renovate[bot] in https://github.com/naa0yama/graft/pull/180
+- chore(deps): update dependency aqua:taiki-e/cargo-llvm-cov to v0.8.7 by @renovate[bot] in https://github.com/naa0yama/graft/pull/179
+
 ## [v0.5.5](https://github.com/naa0yama/graft/compare/v0.5.4...v0.5.5) - 2026-05-09
 
 ### Features 🎉
