@@ -98,14 +98,12 @@ pub fn pick(paths: &[String]) -> anyhow::Result<Vec<SelectedFile>> {
 
     loop {
         match term.read_key().context("terminal read failed")? {
-            Key::ArrowUp => {
-                if cursor > 0 {
-                    cursor = cursor.saturating_sub(1);
-                    if cursor < offset {
-                        offset = cursor;
-                    }
-                    redraw(&term, &items, cursor, offset, page)?;
+            Key::ArrowUp if cursor > 0 => {
+                cursor = cursor.saturating_sub(1);
+                if cursor < offset {
+                    offset = cursor;
                 }
+                redraw(&term, &items, cursor, offset, page)?;
             }
             Key::ArrowDown => {
                 let next = cursor.saturating_add(1);

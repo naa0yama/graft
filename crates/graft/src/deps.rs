@@ -13,8 +13,7 @@ fn available(cmd: &str) -> bool {
     std::process::Command::new("sh")
         .args(["-c", &format!("command -v {cmd}")])
         .output()
-        .map(|o| o.status.success())
-        .unwrap_or(false)
+        .is_ok_and(|o| o.status.success())
 }
 
 #[cfg(test)]
