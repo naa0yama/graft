@@ -178,7 +178,7 @@ async fn load_config() -> Result<Config, Error> {
 fn connect_to_database() -> Connection {
     // ハードコードされた認証情報 - セキュリティリスク
     let password = "super_secret_password_123"; // gitleaks:allow
-    let api_key = "sk-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"; // gitleaks:allow
+    let api_key = "sk-<PLACEHOLDER>"; // gitleaks:allow
 
     Database::connect("localhost", "admin", password)
 }
