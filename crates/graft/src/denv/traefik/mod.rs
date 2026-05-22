@@ -97,6 +97,14 @@ impl TmuxPane {
         }
     }
 
+    #[cfg(test)]
+    fn new(tmux_env: impl Into<String>, tmux_pane: impl Into<String>) -> Self {
+        Self {
+            tmux_env: tmux_env.into(),
+            tmux_pane: tmux_pane.into(),
+        }
+    }
+
     const fn active(&self) -> bool {
         !self.tmux_env.is_empty()
     }
@@ -121,17 +129,30 @@ impl TmuxPane {
         }
     }
 
-    fn set(&self, option: &str, value: &str) {
+    fn tmux_set_option_cmd(&self) -> Option<std::process::Command> {
         if !self.active() {
-            return;
+            return None;
         }
-        let _ = std::process::Command::new("tmux")
-            .args(["set-option", "-p", option, value])
-            .status();
+        let mut cmd = std::process::Command::new("tmux");
+        cmd.arg("set-option");
+        if let Some(pane) = self.pane_id() {
+            cmd.args(["-t", pane]);
+        }
+        Some(cmd)
+    }
+
+    fn set(&self, option: &str, value: &str) {
+        if let Some(mut cmd) = self.tmux_set_option_cmd() {
+            cmd.args(["-p", option, value]);
+            let _ = cmd.status();
+        }
     }
 
     fn clear(&self, option: &str) {
-        self.set(option, "");
+        if let Some(mut cmd) = self.tmux_set_option_cmd() {
+            cmd.args(["-pu", option]);
+            let _ = cmd.status();
+        }
     }
 
     fn set_session(&self, proj: &str, br: &str, ws: &str) {
@@ -1217,5 +1238,48 @@ mod tests {
         let meta = read_devcontainer(dir.path().to_str().expect("path to str"))
             .expect("read_devcontainer");
         assert_eq!(meta.user_name, "user");
+    }
+
+    #[test]
+    fn tmux_pane_inactive_when_tmux_env_empty() {
+        let pane = TmuxPane::new("", "%31");
+        assert!(!pane.active());
+    }
+
+    #[test]
+    fn tmux_pane_active_when_tmux_env_set() {
+        let pane = TmuxPane::new("/tmp/tmux-1000/default,12345,0", "%31");
+        assert!(pane.active());
+    }
+
+    #[test]
+    fn tmux_pane_socket_path_extracted() {
+        let pane = TmuxPane::new("/tmp/tmux-1000/default,12345,0", "%31");
+        assert_eq!(pane.socket_path(), Some("/tmp/tmux-1000/default"));
+    }
+
+    #[test]
+    fn tmux_pane_socket_path_none_when_inactive() {
+        let pane = TmuxPane::new("", "%31");
+        assert_eq!(pane.socket_path(), None);
+    }
+
+    #[test]
+    fn tmux_pane_pane_id_returns_none_when_empty() {
+        let pane = TmuxPane::new("/tmp/tmux-1000/default,12345,0", "");
+        assert_eq!(pane.pane_id(), None);
+    }
+
+    #[test]
+    fn tmux_pane_pane_id_returns_value() {
+        let pane = TmuxPane::new("/tmp/tmux-1000/default,12345,0", "%31");
+        assert_eq!(pane.pane_id(), Some("%31"));
+    }
+
+    #[test]
+    fn tmux_pane_env_value() {
+        let env = "/tmp/tmux-1000/default,12345,0";
+        let pane = TmuxPane::new(env, "%31");
+        assert_eq!(pane.env_value(), env);
     }
 }
