@@ -1,5 +1,19 @@
 # Changelog
 
+## [v0.5.7](https://github.com/naa0yama/graft/compare/v0.5.6...v0.5.7) - 2026-05-22
+
+### Features 🎉
+
+- update(traefik): target specific tmux pane in set-option commands by @naa0yama in https://github.com/naa0yama/graft/pull/189
+
+### Development Environment 🔧
+
+- chore(deps): update dependency jdx/mise to v2026.5.7 by @renovate[bot] in https://github.com/naa0yama/graft/pull/182
+- chore(deps): update taiki-e/install-action action to v2.78.0 by @renovate[bot] in https://github.com/naa0yama/graft/pull/184
+- chore(deps): update dependency jdx/mise to v2026.5.8 by @renovate[bot] in https://github.com/naa0yama/graft/pull/186
+- chore: backport Rust 1.95.0 + testdata policy enforcement by @naa0yama in https://github.com/naa0yama/graft/pull/185
+- chore(deps): update all action update by @renovate[bot] in https://github.com/naa0yama/graft/pull/188
+
 ## [v0.5.6](https://github.com/naa0yama/graft/compare/v0.5.5...v0.5.6) - 2026-05-20
 
 ### Features 🎉
