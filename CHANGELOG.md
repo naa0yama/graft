@@ -1,3 +1,40 @@
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+
+### Bug Fixes 🐌
+
+- fix(cli): enforce conflicts_with_all for --yes and --patch-refresh flags by @naa0yama in https://github.com/naa0yama/graft/pull/210
+
+### Documentation 🗒️
+
+- chore: backport release-manager, deps, devcontainer, and tasks improvements from boilerplate by @naa0yama in https://github.com/naa0yama/graft/pull/207
+
+### Dependency Updates 📦
+
+- chore(deps): update rust crate jiff to v0.2.27 by @renovate[bot] in https://github.com/naa0yama/graft/pull/203
+- chore(deps): update rust crate similar to v3.1.1 by @renovate[bot] in https://github.com/naa0yama/graft/pull/204
+- chore(deps): update rust crate jiff to v0.2.28 by @renovate[bot] in https://github.com/naa0yama/graft/pull/209
+
+### Development Environment 🔧
+
+- chore(deps): update dependency jdx/mise to v2026.5.9 by @renovate[bot] in https://github.com/naa0yama/graft/pull/190
+- chore(deps): update github/codeql-action action to v4.35.5 by @renovate[bot] in https://github.com/naa0yama/graft/pull/192
+- chore(deps): update dependency jdx/mise to v2026.5.10 by @renovate[bot] in https://github.com/naa0yama/graft/pull/194
+- chore(deps): update all action update by @renovate[bot] in https://github.com/naa0yama/graft/pull/195
+- chore(deps): update dependency aqua:ast-grep/ast-grep to v0.42.3 by @renovate[bot] in https://github.com/naa0yama/graft/pull/198
+- chore(deps): update dependency aqua:embarkstudios/cargo-deny to v0.19.7 by @renovate[bot] in https://github.com/naa0yama/graft/pull/199
+- chore(deps): update dependency github:naa0yama/graft to v0.5.7 by @renovate[bot] in https://github.com/naa0yama/graft/pull/200
+- chore(deps): update dependency github:rust-secure-code/cargo-auditable to v0.7.5 by @renovate[bot] in https://github.com/naa0yama/graft/pull/201
+- chore(deps): update mise to v2026.5.15 by @renovate[bot] in https://github.com/naa0yama/graft/pull/202
+- chore(deps): update all action update by @renovate[bot] in https://github.com/naa0yama/graft/pull/205
+
+### Other Changes
+
+- chore(deps): update rust crate serde_yml to 0.0.13 [security] by @renovate[bot] in https://github.com/naa0yama/graft/pull/197
+
+**Full Changelog**: https://github.com/naa0yama/graft/compare/v0.5.7...v0.5.8
+
 # Changelog
 
 ## [v0.5.7](https://github.com/naa0yama/graft/compare/v0.5.6...v0.5.7) - 2026-05-22
