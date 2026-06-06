@@ -15,21 +15,30 @@ Commands:
 
 ## 2. `graft sync` フラグ
 
-| フラグ            | 短縮 | 型   | デフォルト                  | 説明                                           |
-| ----------------- | ---- | ---- | --------------------------- | ---------------------------------------------- |
-| `--manifest`      | `-m` | Path | `.github/graft/config.yaml` | マニフェストパス                               |
-| `--dry-run`       | `-n` | bool | false                       | プレビューのみ(diff 出力、ファイル変更なし)    |
-| `--validate`      |      | bool | false                       | マニフェストバリデーションのみ                 |
-| `--ci-check`      |      | bool | false                       | drift detection                                |
-| `--patch-refresh` |      | bool | false                       | patch ファイルを upstream との diff で自動生成 |
+| フラグ                | 短縮 | 型   | デフォルト                  | 説明                                                   |
+| --------------------- | ---- | ---- | --------------------------- | ------------------------------------------------------ |
+| `--manifest`          | `-m` | Path | `.github/graft/config.yaml` | マニフェストパス                                       |
+| `--upstream-manifest` |      | str  | —                           | upstream マニフェスト参照 (`owner/repo@ref:path` 形式) |
+| `--dry-run`           | `-n` | bool | false                       | プレビューのみ(diff 出力、ファイル変更なし)            |
+| `--validate`          |      | bool | false                       | マニフェストバリデーションのみ                         |
+| `--ci-check`          |      | bool | false                       | drift detection                                        |
+| `--patch-refresh`     |      | bool | false                       | patch ファイルを upstream との diff で自動生成         |
+| `--yes`               | `-y` | bool | false                       | 確認プロンプトをスキップして変更を適用                 |
 
 `gh` CLI が `GITHUB_TOKEN` 環境変数を自動的に使用する。
 commit / PR 操作はこのコマンドでは行わない — skill 経由で Claude に委ねる。
 
 ## 3. フラグの競合ルール
 
+### `sync file`
+
 - `--validate`, `--ci-check`, `--patch-refresh` は相互排他
-- `--dry-run` は sync モード(デフォルト)のみ有効。他のモードでは無視する
+- `--dry-run` は `--patch-refresh` および `--yes` と競合
+- `--yes` は `--dry-run`, `--validate`, `--ci-check`, `--patch-refresh` と競合
+
+### `sync repo`
+
+- `--yes` は `--dry-run`, `--ci-check` と競合
 
 ## 4. `graft init` フラグ
 

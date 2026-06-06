@@ -58,11 +58,11 @@ pub struct SyncFileArgs {
     pub ci_check: bool,
 
     /// Re-generate patch files from the current upstream diff
-    #[arg(long = "patch-refresh", conflicts_with_all = ["validate", "ci_check"])]
+    #[arg(long = "patch-refresh", conflicts_with_all = ["validate", "ci_check", "dry_run"])]
     pub patch_refresh: bool,
 
     /// Apply changes without prompting for confirmation
-    #[arg(short = 'y', long = "yes", conflicts_with = "dry_run")]
+    #[arg(short = 'y', long = "yes", conflicts_with_all = ["dry_run", "validate", "ci_check", "patch_refresh"])]
     pub yes: bool,
 }
 
@@ -100,6 +100,6 @@ pub struct SyncRepoArgs {
     pub ci_check: bool,
 
     /// Apply changes without prompting for confirmation
-    #[arg(short = 'y', long = "yes", conflicts_with = "dry_run")]
+    #[arg(short = 'y', long = "yes", conflicts_with_all = ["dry_run", "ci_check"])]
     pub yes: bool,
 }
