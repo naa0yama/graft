@@ -606,17 +606,65 @@ fn container_network_ip(
 }
 
 // ---------------------------------------------------------------------------
+// Session reference counting (PID-file based, /tmp/graft-denv-<hash>/<pid>)
+// ---------------------------------------------------------------------------
+
+fn workspace_hash(workspace: &str) -> u64 {
+    // FNV-1a 64-bit — fixed seed, stable across runs
+    let mut hash: u64 = 14_695_981_039_346_656_037;
+    for byte in workspace.bytes() {
+        hash ^= u64::from(byte);
+        hash = hash.wrapping_mul(1_099_511_628_211);
+    }
+    hash
+}
+
+fn session_dir_in(base: &std::path::Path, workspace: &str) -> std::path::PathBuf {
+    base.join(format!("graft-denv-{:016x}", workspace_hash(workspace)))
+}
+
+fn session_dir(workspace: &str) -> std::path::PathBuf {
+    session_dir_in(&std::env::temp_dir(), workspace)
+}
+
+fn acquire_session_in(dir: &std::path::Path) -> anyhow::Result<std::path::PathBuf> {
+    std::fs::create_dir_all(dir).context("create session dir")?;
+    let lock = dir.join(std::process::id().to_string());
+    std::fs::write(&lock, b"").context("create session lock")?;
+    Ok(lock)
+}
+
+/// Removes `lock`, then returns `true` when no other live sessions remain.
+/// Stale PID files (process no longer exists) are ignored.
+fn release_session_in(lock: &std::path::Path, dir: &std::path::Path) -> bool {
+    let _ = std::fs::remove_file(lock);
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return true;
+    };
+    !entries
+        .filter_map(Result::ok)
+        .filter_map(|e| e.file_name().into_string().ok())
+        .filter_map(|name| name.parse::<u32>().ok())
+        .any(|pid| std::path::Path::new(&format!("/proc/{pid}")).exists())
+}
+
+// ---------------------------------------------------------------------------
 // Interactive exec helper
 // ---------------------------------------------------------------------------
 
 #[cfg_attr(coverage_nightly, coverage(off))]
-fn exec_and_watch(docker: &dyn DockerRunner, workspace: &str, cleanup: bool) -> anyhow::Result<()> {
+fn exec_and_watch(docker: &dyn DockerRunner, workspace: &str) -> anyhow::Result<()> {
+    let dir = session_dir(workspace);
+    let lock = acquire_session_in(&dir)?;
+
     std::process::Command::new("devcontainer")
         .args(["exec", "--workspace-folder", workspace, "bash"])
         .status()
         .context("devcontainer exec bash")?;
 
-    if !cleanup {
+    let is_last = release_session_in(&lock, &dir);
+
+    if !is_last {
         let _ = writeln!(
             std::io::stdout(),
             "Shell exited. Container still running. (mise run dev:exec to reconnect, mise run dev:down to stop)"
@@ -624,7 +672,7 @@ fn exec_and_watch(docker: &dyn DockerRunner, workspace: &str, cleanup: bool) -> 
         return Ok(());
     }
 
-    // dev:up owner session: stop gracefully, remove routes, clean up old stopped containers.
+    // Last session: stop gracefully, remove routes, clean up old stopped containers.
     let cid = running_container_id(docker, workspace).unwrap_or_default();
     let proj = project(workspace);
     let dynamic_dir = traefik_dynamic_dir();
@@ -646,6 +694,7 @@ fn exec_and_watch(docker: &dyn DockerRunner, workspace: &str, cleanup: bool) -> 
         let _ = docker.run(&["rm", old_cid]);
     }
 
+    let _ = std::fs::remove_dir(&dir);
     let _ = writeln!(
         std::io::stdout(),
         "Container stopped. Use 'mise run dev:exec' to reconnect."
@@ -955,7 +1004,7 @@ fn cmd_up(docker: &dyn DockerRunner) -> anyhow::Result<()> {
     let _ = writeln!(out, "==================================================");
     let _ = writeln!(out);
 
-    exec_and_watch(docker, &ws, true)?;
+    exec_and_watch(docker, &ws)?;
     tmux.clear_session();
     Ok(())
 }
@@ -1052,7 +1101,7 @@ fn cmd_exec(docker: &dyn DockerRunner) -> anyhow::Result<()> {
         let br = branch(&ws)?;
         let proj = project(&ws);
         tmux.set_session(&proj, &br, &ws);
-        exec_and_watch(docker, &ws, false)?;
+        exec_and_watch(docker, &ws)?;
         tmux.clear_session();
     }
     Ok(())
@@ -1238,6 +1287,77 @@ mod tests {
         let meta = read_devcontainer(dir.path().to_str().expect("path to str"))
             .expect("read_devcontainer");
         assert_eq!(meta.user_name, "user");
+    }
+
+    #[test]
+    fn workspace_hash_known_value() {
+        // Pin the FNV-1a output so accidental constant changes are caught.
+        assert_eq!(
+            workspace_hash("/home/user/projects/graft"),
+            0x7fde_6d76_91cb_6c99
+        );
+    }
+
+    #[test]
+    fn workspace_hash_differs_for_different_paths() {
+        let h1 = workspace_hash("/home/user/projects/graft");
+        let h2 = workspace_hash("/home/user/projects/other");
+        assert_ne!(h1, h2);
+    }
+
+    #[test]
+    fn session_acquire_creates_lock_file() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let lock = acquire_session_in(dir.path()).expect("acquire");
+        assert!(lock.exists());
+    }
+
+    #[test]
+    fn session_release_is_last_when_sole_session() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let lock = acquire_session_in(dir.path()).expect("acquire");
+        let is_last = release_session_in(&lock, dir.path());
+        assert!(is_last);
+        assert!(!lock.exists());
+    }
+
+    #[test]
+    fn session_not_last_when_another_live_session_exists() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let my_lock = acquire_session_in(dir.path()).expect("acquire");
+        // PID 1 (init) always exists on Linux
+        let other_lock = dir.path().join("1");
+        std::fs::write(&other_lock, b"").expect("write");
+        let is_last = release_session_in(&my_lock, dir.path());
+        assert!(!is_last, "PID 1 is alive so we are not last");
+        let _ = std::fs::remove_file(&other_lock);
+    }
+
+    #[test]
+    fn session_stale_lock_ignored() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        // PID 9999999 almost certainly does not exist
+        std::fs::write(dir.path().join("9999999"), b"").expect("write stale");
+        let lock = acquire_session_in(dir.path()).expect("acquire");
+        let is_last = release_session_in(&lock, dir.path());
+        assert!(is_last, "stale PID should not count as live session");
+    }
+
+    #[test]
+    fn session_dir_in_uses_hex_hash_suffix() {
+        let base = std::path::Path::new("/tmp");
+        let dir = session_dir_in(base, "/workspace/foo");
+        let name = dir.file_name().unwrap().to_str().unwrap();
+        // Directory name must start with the prefix and be followed by a
+        // 16-hex-digit FNV-1a hash so that it is both human-readable and
+        // stable across runs.
+        assert!(name.starts_with("graft-denv-"), "unexpected prefix: {name}");
+        let suffix = &name["graft-denv-".len()..];
+        assert_eq!(suffix.len(), 16, "expected 16 hex digits, got: {suffix}");
+        assert!(
+            suffix.chars().all(|c| c.is_ascii_hexdigit()),
+            "non-hex: {suffix}"
+        );
     }
 
     #[test]
