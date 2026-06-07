@@ -4,6 +4,16 @@
 
 ### Bug Fixes 🐌
 
+- fix(denv): use PID-file reference counting to stop container on last session by @naa0yama in https://github.com/naa0yama/graft/pull/211
+
+**Full Changelog**: https://github.com/naa0yama/graft/compare/v0.5.8...v0.5.9
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+
+### Bug Fixes 🐌
+
 - fix(cli): enforce conflicts_with_all for --yes and --patch-refresh flags by @naa0yama in https://github.com/naa0yama/graft/pull/210
 
 ### Documentation 🗒️
