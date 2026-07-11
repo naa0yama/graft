@@ -6,6 +6,13 @@ use std::path::Path;
 
 use anyhow::Context as _;
 
+/// Returns the path of the Traefik file-provider YAML for a container.
+///
+/// `hostname` is the Docker-assigned short container ID (= `$HOSTNAME` inside the container).
+pub fn resolve_route_file(dynamic_dir: &Path, project: &str, hostname: &str) -> std::path::PathBuf {
+    dynamic_dir.join(format!("{project}-{hostname}.yml"))
+}
+
 /// Normalize a branch name to a DNS-safe label:
 /// lowercase, non-alphanumeric/hyphen replaced with `-`, deduplicated,
 /// leading/trailing hyphens stripped, truncated to 63 chars.
@@ -54,7 +61,7 @@ pub fn write_routes(
     dynamic_dir: &Path,
 ) -> anyhow::Result<()> {
     let cid_short = &cid[..cid.len().min(12)];
-    let dest = dynamic_dir.join(format!("{project}-{cid_short}.yml"));
+    let dest = resolve_route_file(dynamic_dir, project, cid_short);
 
     let mut content = String::from("http:\n  routers:\n");
     for port in ports {
@@ -92,7 +99,7 @@ pub fn write_routes(
 /// Returns an error if the file cannot be removed.
 pub fn remove_routes(cid: &str, project: &str, dynamic_dir: &Path) -> anyhow::Result<()> {
     let cid_short = &cid[..cid.len().min(12)];
-    let dest = dynamic_dir.join(format!("{project}-{cid_short}.yml"));
+    let dest = resolve_route_file(dynamic_dir, project, cid_short);
     if dest.exists() {
         std::fs::remove_file(&dest).with_context(|| format!("remove {}", dest.display()))?;
         let _ = writeln!(std::io::stdout(), "Removed {}", dest.display());
@@ -129,6 +136,13 @@ mod tests {
         let long = "a".repeat(70);
         let result = normalize_branch(&long);
         assert_eq!(result.len(), 63);
+    }
+
+    #[test]
+    fn resolve_route_file_uses_project_and_hostname() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = resolve_route_file(dir.path(), "myproject", "abc123def456");
+        assert_eq!(path, dir.path().join("myproject-abc123def456.yml"));
     }
 
     #[test]

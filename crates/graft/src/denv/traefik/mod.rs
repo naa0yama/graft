@@ -1131,7 +1131,15 @@ fn cmd_routes_update() -> anyhow::Result<()> {
         return Ok(());
     }
 
-    // TODO: Cycle 2 — branch resolution
+    let hostname = std::env::var("HOSTNAME").unwrap_or_default();
+    if hostname.is_empty() {
+        tracing::warn!("HOSTNAME not set; skipping routes update");
+        return Ok(());
+    }
+
+    let _route_file =
+        routes::resolve_route_file(std::path::Path::new(&dynamic_dir), &project, &hostname);
+
     // TODO: Cycle 3 — IP resolution
     // TODO: Cycle 4 — write_routes integration
     Ok(())
