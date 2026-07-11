@@ -2,6 +2,67 @@
 
 ## What's Changed
 
+### Features 🎉
+
+- feat(denv): branch-aware Traefik routes update by @naa0yama in https://github.com/naa0yama/graft/pull/245
+
+### Dependency Updates 📦
+
+- chore(deps): update rust crate console to v0.16.4 by @renovate[bot] in https://github.com/naa0yama/graft/pull/247
+- chore(deps): update rust crate jiff to v0.2.31 by @renovate[bot] in https://github.com/naa0yama/graft/pull/248
+
+### Development Environment 🔧
+
+- chore(deps): lock file maintenance by @renovate[bot] in https://github.com/naa0yama/graft/pull/214
+- chore(deps): update mise to v2026.5.18 by @renovate[bot] in https://github.com/naa0yama/graft/pull/216
+- chore(deps): update mise to v2026.6.0 by @renovate[bot] in https://github.com/naa0yama/graft/pull/217
+- chore(deps): update all action update to v4.1.0 by @renovate[bot] in https://github.com/naa0yama/graft/pull/218
+- chore(deps): update all action update to v2.81.5 by @renovate[bot] in https://github.com/naa0yama/graft/pull/219
+- chore(deps): update all action update to v2.81.6 by @renovate[bot] in https://github.com/naa0yama/graft/pull/220
+- chore(deps): update dependency github:naa0yama/graft to v0.5.8 by @renovate[bot] in https://github.com/naa0yama/graft/pull/221
+- chore(deps): update all action update to v2.81.7 by @renovate[bot] in https://github.com/naa0yama/graft/pull/222
+- chore(deps): update mise to v2026.6.1 by @renovate[bot] in https://github.com/naa0yama/graft/pull/223
+- chore(deps): update dependency github:naa0yama/graft to v0.5.9 by @renovate[bot] in https://github.com/naa0yama/graft/pull/224
+- chore(deps): lock file maintenance by @renovate[bot] in https://github.com/naa0yama/graft/pull/225
+- chore(deps): update all action update to v2.81.8 by @renovate[bot] in https://github.com/naa0yama/graft/pull/226
+- chore(deps): update all action update to v2.81.9 by @renovate[bot] in https://github.com/naa0yama/graft/pull/227
+- chore(deps): update mise to v2026.6.2 by @renovate[bot] in https://github.com/naa0yama/graft/pull/228
+- chore(deps): update all action update to v2.81.10 by @renovate[bot] in https://github.com/naa0yama/graft/pull/230
+- chore(deps): update mise to v2026.6.3 by @renovate[bot] in https://github.com/naa0yama/graft/pull/231
+- chore(deps): update mise to v2026.6.4 by @renovate[bot] in https://github.com/naa0yama/graft/pull/232
+- chore(deps): update mise to v2026.6.5 by @renovate[bot] in https://github.com/naa0yama/graft/pull/233
+- chore(deps): update mise to v2026.6.6 by @renovate[bot] in https://github.com/naa0yama/graft/pull/234
+- chore(deps): update mise to v2026.6.9 by @renovate[bot] in https://github.com/naa0yama/graft/pull/235
+- chore(deps): update mise to v2026.6.10 by @renovate[bot] in https://github.com/naa0yama/graft/pull/237
+- chore(deps): lock file maintenance by @renovate[bot] in https://github.com/naa0yama/graft/pull/236
+- chore(deps): update all action update by @renovate[bot] in https://github.com/naa0yama/graft/pull/238
+- chore(deps): update dependency aqua:embarkstudios/cargo-deny to v0.19.9 by @renovate[bot] in https://github.com/naa0yama/graft/pull/239
+- chore(deps): update mise (patch) by @renovate[bot] in https://github.com/naa0yama/graft/pull/240
+- chore(deps): update all action update by @renovate[bot] in https://github.com/naa0yama/graft/pull/242
+- chore(deps): update docker/dockerfile docker tag to v1.25.0 by @renovate[bot] in https://github.com/naa0yama/graft/pull/243
+- chore(deps): update dependency jdx/mise to v2026.6.14 by @renovate[bot] in https://github.com/naa0yama/graft/pull/246
+- chore(deps): update all action update by @renovate[bot] in https://github.com/naa0yama/graft/pull/249
+- chore(deps): update dependency aqua:ast-grep/ast-grep to v0.44.0 by @renovate[bot] in https://github.com/naa0yama/graft/pull/250
+- chore(deps): update dependency aqua:cli/cli to v2.96.0 by @renovate[bot] in https://github.com/naa0yama/graft/pull/229
+- chore(deps): update dependency usage to v3.5.3 by @renovate[bot] in https://github.com/naa0yama/graft/pull/213
+- chore(deps): update dependency dprint to v0.55.1 by @renovate[bot] in https://github.com/naa0yama/graft/pull/251
+- chore(deps): update dependency jdx/mise to v2026.7.0 by @renovate[bot] in https://github.com/naa0yama/graft/pull/252
+- chore(deps): update dependency openobserve/openobserve to v0.91.1 by @renovate[bot] in https://github.com/naa0yama/graft/pull/254
+- chore(deps): update dependency zizmor to v1.26.1 by @renovate[bot] in https://github.com/naa0yama/graft/pull/255
+- chore(deps): update dependency mozilla/sccache to v0.16.0 by @renovate[bot] in https://github.com/naa0yama/graft/pull/253
+- chore(deps): update all action update (major) by @renovate[bot] in https://github.com/naa0yama/graft/pull/241
+- chore(deps): update rust docker tag to v1.96.1 by @renovate[bot] in https://github.com/naa0yama/graft/pull/124
+
+### Other Changes
+
+- chore(deps): update rust crate anyhow to v1.0.103 [security] by @renovate[bot] in https://github.com/naa0yama/graft/pull/244
+
+**Full Changelog**: https://github.com/naa0yama/graft/compare/v0.5.9...v0.5.10
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+
 ### Bug Fixes 🐌
 
 - fix(denv): use PID-file reference counting to stop container on last session by @naa0yama in https://github.com/naa0yama/graft/pull/211

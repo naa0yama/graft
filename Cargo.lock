@@ -275,7 +275,7 @@ dependencies = [
 
 [[package]]
 name = "graft"
-version = "0.5.9"
+version = "0.5.10"
 dependencies = [
  "anyhow",
  "assert_cmd",
@@ -297,7 +297,7 @@ dependencies = [
 
 [[package]]
 name = "graft-engine"
-version = "0.5.9"
+version = "0.5.10"
 dependencies = [
  "anyhow",
  "console",
@@ -310,7 +310,7 @@ dependencies = [
 
 [[package]]
 name = "graft-manifest"
-version = "0.5.9"
+version = "0.5.10"
 dependencies = [
  "anyhow",
  "serde",
