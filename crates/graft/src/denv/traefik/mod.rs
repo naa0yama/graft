@@ -5,7 +5,7 @@ pub mod routes;
 pub mod runner;
 
 use std::io::Write as _;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use anyhow::Context as _;
@@ -299,6 +299,8 @@ struct DevcontainerMeta {
     container_uid: String,
     user_name: String,
     config: serde_json::Value,
+    dockerfile_path: Option<PathBuf>,
+    direct_image: Option<String>,
 }
 
 fn read_devcontainer(workspace: &str) -> anyhow::Result<DevcontainerMeta> {
@@ -324,12 +326,78 @@ fn read_devcontainer(workspace: &str) -> anyhow::Result<DevcontainerMeta> {
         .and_then(|u| u.as_str())
         .unwrap_or("user")
         .to_owned();
+    let dc_dir = path
+        .parent()
+        .context("devcontainer.json has no parent dir")?;
+    // WHY-NOT: canonicalize() — requires the file to exist at parse time;
+    // read_devcontainer is called from routes-update (warn+skip) and cmd_up
+    // (hard-fail), so a missing Dockerfile at parse time would block container
+    // startup; prepull_image handles a missing file gracefully via read_to_string error
+    let dockerfile_path = config
+        .pointer("/build/dockerfile")
+        .and_then(|v| v.as_str())
+        .map(|rel| dc_dir.join(rel));
+    let direct_image = config
+        .get("image")
+        .and_then(|v| v.as_str())
+        .map(str::to_owned);
     Ok(DevcontainerMeta {
         ports,
         container_uid,
         user_name,
         config,
+        dockerfile_path,
+        direct_image,
     })
+}
+
+fn parse_dockerfile_base_image(path: &Path) -> anyhow::Result<Option<String>> {
+    let content = std::fs::read_to_string(path)
+        .with_context(|| format!("read Dockerfile {}", path.display()))?;
+    for line in content.lines() {
+        let upper = line.trim().to_ascii_uppercase();
+        if !upper.starts_with("FROM ") {
+            continue;
+        }
+        let candidates: Vec<&str> = line
+            .split_whitespace()
+            .skip(1)
+            .filter(|t| !t.starts_with("--") && !t.starts_with('$'))
+            .collect();
+        if let Some(img) = candidates.first() {
+            // WHY-NOT: match on "AS" keyword — aliases appear after the image token,
+            // not as the image itself; heuristic on ':' / '@' / '/' is simpler and sufficient
+            if img.contains(':') || img.contains('@') || img.contains('/') {
+                return Ok(Some((*img).to_owned()));
+            }
+        }
+    }
+    Ok(None)
+}
+
+fn prepull_image(docker: &dyn DockerRunner, meta: &DevcontainerMeta) -> anyhow::Result<()> {
+    let image = if let Some(img) = &meta.direct_image {
+        img.clone()
+    } else if let Some(ref path) = meta.dockerfile_path {
+        match parse_dockerfile_base_image(path)
+            .with_context(|| format!("parse Dockerfile base image: {}", path.display()))?
+        {
+            Some(img) => img,
+            None => return Ok(()),
+        }
+    } else {
+        return Ok(());
+    };
+    tracing::info!("pre-pulling base image: {image}");
+    let out = docker.run(&["pull", &image])?;
+    if out.exit_code != 0 {
+        let stderr = String::from_utf8_lossy(&out.stderr);
+        tracing::warn!(
+            "docker pull {image} failed (exit {}): {stderr}",
+            out.exit_code
+        );
+    }
+    Ok(())
 }
 
 // ---------------------------------------------------------------------------
@@ -827,6 +895,10 @@ fn cmd_up(docker: &dyn DockerRunner) -> anyhow::Result<()> {
     let proj = project(&ws);
     let br = branch(&ws)?;
     let dc = read_devcontainer(&ws)?;
+
+    if let Err(e) = prepull_image(docker, &dc) {
+        tracing::warn!("pre-pull failed, continuing: {e:#}");
+    }
 
     tmux.set_session(&proj, &br, &ws);
 
@@ -1749,5 +1821,169 @@ mod tests {
             &MockBranchResolver(Err(anyhow::anyhow!("should-not-be-called"))),
         );
         assert!(result.is_ok());
+    }
+
+    // --- MockDockerRunner ---
+
+    use std::sync::Mutex;
+
+    struct MockDockerRunner {
+        calls: Mutex<Vec<Vec<String>>>,
+        exit_code: i32,
+    }
+    impl MockDockerRunner {
+        fn new(exit_code: i32) -> Self {
+            Self {
+                calls: Mutex::new(vec![]),
+                exit_code,
+            }
+        }
+        fn calls(&self) -> Vec<Vec<String>> {
+            self.calls.lock().unwrap().clone()
+        }
+    }
+    impl runner::DockerRunner for MockDockerRunner {
+        fn run(&self, args: &[&str]) -> anyhow::Result<runner::CommandOutput> {
+            self.calls
+                .lock()
+                .unwrap()
+                .push(args.iter().map(|s| (*s).to_owned()).collect());
+            Ok(runner::CommandOutput {
+                exit_code: self.exit_code,
+                stdout: vec![],
+                stderr: vec![],
+            })
+        }
+    }
+
+    // --- parse_dockerfile_base_image ---
+
+    #[test]
+    fn parse_dockerfile_base_image_returns_image_when_plain_from() {
+        let mut f = tempfile::NamedTempFile::new().unwrap();
+        std::io::Write::write_all(&mut f, b"FROM rust:1.95.0-trixie\n").unwrap();
+        let result = parse_dockerfile_base_image(f.path()).unwrap();
+        assert_eq!(result, Some("rust:1.95.0-trixie".to_owned()));
+    }
+
+    #[test]
+    fn parse_dockerfile_base_image_returns_image_when_platform_flag_present() {
+        let mut f = tempfile::NamedTempFile::new().unwrap();
+        std::io::Write::write_all(
+            &mut f,
+            b"FROM --platform=$BUILDPLATFORM rust:1.95.0@sha256:abc123\n",
+        )
+        .unwrap();
+        let result = parse_dockerfile_base_image(f.path()).unwrap();
+        assert_eq!(result, Some("rust:1.95.0@sha256:abc123".to_owned()));
+    }
+
+    #[test]
+    fn parse_dockerfile_base_image_skips_arg_ref() {
+        let mut f = tempfile::NamedTempFile::new().unwrap();
+        std::io::Write::write_all(&mut f, b"FROM $BASE_IMAGE\n").unwrap();
+        let result = parse_dockerfile_base_image(f.path()).unwrap();
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn parse_dockerfile_base_image_skips_stage_alias() {
+        let mut f = tempfile::NamedTempFile::new().unwrap();
+        std::io::Write::write_all(&mut f, b"FROM builder-base AS development\n").unwrap();
+        let result = parse_dockerfile_base_image(f.path()).unwrap();
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn parse_dockerfile_base_image_returns_none_when_no_from() {
+        let mut f = tempfile::NamedTempFile::new().unwrap();
+        std::io::Write::write_all(&mut f, b"RUN apt-get update\n").unwrap();
+        let result = parse_dockerfile_base_image(f.path()).unwrap();
+        assert_eq!(result, None);
+    }
+
+    // --- prepull_image ---
+
+    fn make_meta_with_direct_image(img: &str) -> DevcontainerMeta {
+        DevcontainerMeta {
+            ports: vec![],
+            container_uid: "1000".to_owned(),
+            user_name: "user".to_owned(),
+            config: serde_json::Value::Null,
+            dockerfile_path: None,
+            direct_image: Some(img.to_owned()),
+        }
+    }
+
+    fn make_meta_with_dockerfile(path: std::path::PathBuf) -> DevcontainerMeta {
+        DevcontainerMeta {
+            ports: vec![],
+            container_uid: "1000".to_owned(),
+            user_name: "user".to_owned(),
+            config: serde_json::Value::Null,
+            dockerfile_path: Some(path),
+            direct_image: None,
+        }
+    }
+
+    fn make_meta_empty() -> DevcontainerMeta {
+        DevcontainerMeta {
+            ports: vec![],
+            container_uid: "1000".to_owned(),
+            user_name: "user".to_owned(),
+            config: serde_json::Value::Null,
+            dockerfile_path: None,
+            direct_image: None,
+        }
+    }
+
+    #[test]
+    fn prepull_image_pulls_direct_image_when_direct_image_set() {
+        let mock = MockDockerRunner::new(0);
+        let meta = make_meta_with_direct_image("rust:1.95.0@sha256:abc");
+        prepull_image(&mock, &meta).unwrap();
+        let calls = mock.calls();
+        assert_eq!(calls.len(), 1);
+        assert_eq!(
+            calls.first().unwrap(),
+            &vec!["pull", "rust:1.95.0@sha256:abc"]
+        );
+    }
+
+    #[test]
+    fn prepull_image_parses_dockerfile_and_pulls_when_only_dockerfile_path_set() {
+        let mut f = tempfile::NamedTempFile::new().unwrap();
+        std::io::Write::write_all(
+            &mut f,
+            b"FROM --platform=$BUILDPLATFORM rust:1.95.0-trixie@sha256:xyz\n",
+        )
+        .unwrap();
+        let path = f.path().to_path_buf();
+        let mock = MockDockerRunner::new(0);
+        let meta = make_meta_with_dockerfile(path);
+        prepull_image(&mock, &meta).unwrap();
+        let calls = mock.calls();
+        assert_eq!(calls.len(), 1);
+        assert_eq!(
+            calls.first().unwrap(),
+            &vec!["pull", "rust:1.95.0-trixie@sha256:xyz"]
+        );
+    }
+
+    #[test]
+    fn prepull_image_is_noop_when_neither_field_set() {
+        let mock = MockDockerRunner::new(0);
+        let meta = make_meta_empty();
+        prepull_image(&mock, &meta).unwrap();
+        assert!(mock.calls().is_empty());
+    }
+
+    #[test]
+    fn prepull_image_continues_when_docker_pull_fails() {
+        let mock = MockDockerRunner::new(1);
+        let meta = make_meta_with_direct_image("rust:1.95.0@sha256:abc");
+        // non-fatal: should return Ok even on pull failure
+        assert!(prepull_image(&mock, &meta).is_ok());
+        assert_eq!(mock.calls().len(), 1);
     }
 }
