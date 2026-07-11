@@ -1148,11 +1148,17 @@ fn cmd_routes_update_inner(
         return Ok(());
     }
 
-    let ip = ip_resolver.resolve()?;
-    if ip.is_empty() {
-        tracing::warn!("could not resolve container IP; skipping routes update");
-        return Ok(());
-    }
+    let ip = match ip_resolver.resolve() {
+        Ok(s) if s.is_empty() => {
+            tracing::warn!("could not resolve container IP; skipping routes update");
+            return Ok(());
+        }
+        Ok(s) => s,
+        Err(e) => {
+            tracing::warn!("IP resolver error; skipping routes update: {e:#}");
+            return Ok(());
+        }
+    };
 
     let branch = branch_resolver.current_branch(env.workspace)?;
 
@@ -1164,7 +1170,13 @@ fn cmd_routes_update_inner(
         "routes_update: resolved IP and branch"
     );
 
-    let dc = read_devcontainer(env.workspace)?;
+    let dc = match read_devcontainer(env.workspace) {
+        Ok(d) => d,
+        Err(e) => {
+            tracing::warn!("devcontainer.json not found or invalid; skipping routes update: {e:#}");
+            return Ok(());
+        }
+    };
     if dc.ports.is_empty() {
         tracing::warn!("no portsAttributes found in devcontainer.json; skipping routes update");
         return Ok(());
@@ -1630,19 +1642,53 @@ mod tests {
     }
 
     #[test]
-    fn routes_update_inner_calls_ip_resolver() {
+    fn routes_update_inner_warns_on_ip_resolver_err() {
+        // IP resolver failure is non-fatal: warn + Ok(())
         let result = cmd_routes_update_inner(
             &env_all_set(),
-            &MockIpResolver(Err(anyhow::anyhow!("ip-resolver-called"))),
+            &MockIpResolver(Err(anyhow::anyhow!("ip-resolver-failed"))),
+            &MockBranchResolver(Ok("main".to_owned())),
+        );
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn routes_update_inner_warns_on_missing_devcontainer() {
+        // devcontainer.json absent is non-fatal: warn + Ok(())
+        let dyn_dir = tempfile::tempdir().expect("dynamic tempdir");
+        let ws_dir = tempfile::tempdir().expect("ws tempdir"); // no .devcontainer here
+        let env = RoutesUpdateEnv {
+            managed: "1",
+            project: "testproj",
+            dynamic_dir: dyn_dir.path().to_str().expect("path"),
+            hostname: "abc123def456",
+            workspace: ws_dir.path().to_str().expect("path"),
+        };
+        let result = cmd_routes_update_inner(
+            &env,
+            &MockIpResolver(Ok("172.20.0.2".to_owned())),
+            &MockBranchResolver(Ok("main".to_owned())),
+        );
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn routes_update_inner_errors_on_write_routes_failure() {
+        // write_routes failure is fatal: Err propagated
+        let ws = make_workspace_with_ports(&["8080"]);
+        let env = RoutesUpdateEnv {
+            managed: "1",
+            project: "testproj",
+            dynamic_dir: "/nonexistent-dir-that-cannot-be-written",
+            hostname: "abc123def456",
+            workspace: ws.path().to_str().expect("path"),
+        };
+        let result = cmd_routes_update_inner(
+            &env,
+            &MockIpResolver(Ok("172.20.0.2".to_owned())),
             &MockBranchResolver(Ok("main".to_owned())),
         );
         assert!(result.is_err());
-        assert!(
-            result
-                .unwrap_err()
-                .to_string()
-                .contains("ip-resolver-called")
-        );
     }
 
     #[test]
