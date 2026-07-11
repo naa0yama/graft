@@ -213,7 +213,7 @@ fn project(workspace: &str) -> String {
 }
 
 #[cfg_attr(coverage_nightly, coverage(off))]
-fn branch(workspace: &str) -> anyhow::Result<String> {
+pub(super) fn branch(workspace: &str) -> anyhow::Result<String> {
     let out = std::process::Command::new("git")
         .args(["-C", workspace, "branch", "--show-current"])
         .output()

@@ -29,27 +29,7 @@ pub struct SystemGitBranchResolver;
 impl GitBranchResolver for SystemGitBranchResolver {
     #[cfg_attr(coverage_nightly, coverage(off))]
     fn current_branch(&self, workspace: &str) -> anyhow::Result<String> {
-        let out = std::process::Command::new("git")
-            .args(["-C", workspace, "branch", "--show-current"])
-            .output()
-            .context("git branch --show-current failed")?;
-        let raw = String::from_utf8(out.stdout)
-            .context("git output not UTF-8")?
-            .trim()
-            .to_owned();
-        if raw.is_empty() {
-            let hash_out = std::process::Command::new("git")
-                .args(["-C", workspace, "rev-parse", "--short", "HEAD"])
-                .output()
-                .context("git rev-parse HEAD failed")?;
-            let hash = String::from_utf8(hash_out.stdout)
-                .context("git output not UTF-8")?
-                .trim()
-                .to_owned();
-            Ok(super::routes::normalize_branch(&format!("detached-{hash}")))
-        } else {
-            Ok(super::routes::normalize_branch(&raw))
-        }
+        super::branch(workspace)
     }
 }
 
