@@ -13,5 +13,6 @@ pub fn execute(args: &DenvArgs) -> ExitCode {
         DenvCommand::Exec => traefik::execute_exec(),
         DenvCommand::Status => traefik::execute_status(),
         DenvCommand::Traefik(traefik_args) => traefik::execute(traefik_args),
+        DenvCommand::RoutesUpdate => traefik::execute_routes_update(),
     }
 }

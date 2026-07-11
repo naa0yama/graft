@@ -20,4 +20,6 @@ pub enum DenvCommand {
     Status,
     /// Manage Traefik reverse proxy infrastructure
     Traefik(TraefikArgs),
+    /// Update Traefik routes for the current branch (run inside devcontainer)
+    RoutesUpdate,
 }

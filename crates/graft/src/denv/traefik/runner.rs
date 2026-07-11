@@ -2,6 +2,37 @@
 #![allow(clippy::module_name_repetitions)]
 use anyhow::Context as _;
 
+pub trait IpResolver: Send + Sync {
+    fn resolve(&self) -> anyhow::Result<String>;
+}
+
+pub struct SystemIpResolver;
+
+impl IpResolver for SystemIpResolver {
+    #[cfg_attr(coverage_nightly, coverage(off))]
+    fn resolve(&self) -> anyhow::Result<String> {
+        let out = std::process::Command::new("hostname")
+            .arg("-I")
+            .output()
+            .context("hostname -I failed")?;
+        let stdout = String::from_utf8(out.stdout).context("hostname -I output not UTF-8")?;
+        Ok(stdout.split_whitespace().next().unwrap_or("").to_owned())
+    }
+}
+
+pub trait GitBranchResolver: Send + Sync {
+    fn current_branch(&self, workspace: &str) -> anyhow::Result<String>;
+}
+
+pub struct SystemGitBranchResolver;
+
+impl GitBranchResolver for SystemGitBranchResolver {
+    #[cfg_attr(coverage_nightly, coverage(off))]
+    fn current_branch(&self, workspace: &str) -> anyhow::Result<String> {
+        super::branch(workspace)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct CommandOutput {
     pub exit_code: i32,

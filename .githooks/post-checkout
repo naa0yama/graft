@@ -41,3 +41,11 @@ branch=$(git branch --show-current 2>/dev/null) || exit 0
 
 # || true: set-option -p targets the current pane and may fail if unsupported; best-effort.
 tmux set-option -p @pane-name "${repo}:${branch}" 2>/dev/null || true
+
+# Update Traefik routes when inside a managed devcontainer.
+# $3=1: branch checkout (not file checkout)
+if [ "${3:-0}" = "1" ] && [ "${TRAEFIK_MANAGED:-}" = "1" ]; then
+    if command -v graft &>/dev/null; then
+        graft denv routes-update 2>/dev/null || true
+    fi
+fi
