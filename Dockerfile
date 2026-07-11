@@ -60,6 +60,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 	jq \
 	musl-tools \
 	nano \
+	sqlite3 \
 	sudo \
 	wget
 
@@ -211,4 +212,3 @@ EOF
 # Project-specific dependencies are listed here.
 
 # graft:keep-end
-
