@@ -4,6 +4,20 @@
 
 ### Features 🎉
 
+- feat(denv): pre-pull base image before devcontainer up by @naa0yama in https://github.com/naa0yama/graft/pull/256
+
+### Development Environment 🔧
+
+- chore(deps): update dependency aqua:ast-grep/ast-grep to v0.44.1 by @renovate[bot] in https://github.com/naa0yama/graft/pull/258
+
+**Full Changelog**: https://github.com/naa0yama/graft/compare/v0.5.10...v0.5.11
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+
+### Features 🎉
+
 - feat(denv): branch-aware Traefik routes update by @naa0yama in https://github.com/naa0yama/graft/pull/245
 
 ### Dependency Updates 📦
