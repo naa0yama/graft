@@ -24,6 +24,11 @@ use config::{
 use routes::{normalize_branch, remove_routes, write_routes};
 use runner::{DockerRunner, SystemDockerRunner, run_checked};
 
+/// Returns `true` when all three Traefik env vars are present and `TRAEFIK_MANAGED` is `"1"`.
+fn routes_update_env_guard(managed: &str, project: &str, dynamic_dir: &str) -> bool {
+    managed == "1" && !project.is_empty() && !dynamic_dir.is_empty()
+}
+
 /// Dispatch a Traefik subcommand and return an exit code.
 #[cfg_attr(coverage_nightly, coverage(off))]
 pub fn execute(args: &TraefikArgs) -> ExitCode {
@@ -51,6 +56,11 @@ pub fn execute_exec() -> ExitCode {
 #[cfg_attr(coverage_nightly, coverage(off))]
 pub fn execute_status() -> ExitCode {
     run(cmd_status(&SystemDockerRunner))
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+pub fn execute_routes_update() -> ExitCode {
+    run(cmd_routes_update())
 }
 
 #[cfg_attr(coverage_nightly, coverage(off))]
@@ -1107,6 +1117,26 @@ fn cmd_exec(docker: &dyn DockerRunner) -> anyhow::Result<()> {
     Ok(())
 }
 
+// Cycles 2-4 will add `?`-returning code, so the Result return is intentional.
+#[allow(clippy::unnecessary_wraps)]
+fn cmd_routes_update() -> anyhow::Result<()> {
+    let managed = std::env::var("TRAEFIK_MANAGED").unwrap_or_default();
+    let project = std::env::var("TRAEFIK_PROJECT").unwrap_or_default();
+    let dynamic_dir = std::env::var("TRAEFIK_DYNAMIC_DIR").unwrap_or_default();
+
+    if !routes_update_env_guard(&managed, &project, &dynamic_dir) {
+        tracing::warn!(
+            "TRAEFIK_MANAGED/TRAEFIK_PROJECT/TRAEFIK_DYNAMIC_DIR not set; skipping routes update"
+        );
+        return Ok(());
+    }
+
+    // TODO: Cycle 2 — branch resolution
+    // TODO: Cycle 3 — IP resolution
+    // TODO: Cycle 4 — write_routes integration
+    Ok(())
+}
+
 #[cfg_attr(coverage_nightly, coverage(off))]
 fn cmd_status(docker: &dyn DockerRunner) -> anyhow::Result<()> {
     host_check()?;
@@ -1129,6 +1159,33 @@ fn cmd_status(docker: &dyn DockerRunner) -> anyhow::Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // --- routes_update_env_guard ---
+
+    #[test]
+    fn routes_update_guard_false_when_managed_unset() {
+        assert!(!routes_update_env_guard("", "proj", "/traefik-dynamic"));
+    }
+
+    #[test]
+    fn routes_update_guard_false_when_managed_not_one() {
+        assert!(!routes_update_env_guard("0", "proj", "/traefik-dynamic"));
+    }
+
+    #[test]
+    fn routes_update_guard_false_when_project_empty() {
+        assert!(!routes_update_env_guard("1", "", "/traefik-dynamic"));
+    }
+
+    #[test]
+    fn routes_update_guard_false_when_dynamic_dir_empty() {
+        assert!(!routes_update_env_guard("1", "proj", ""));
+    }
+
+    #[test]
+    fn routes_update_guard_true_when_all_set() {
+        assert!(routes_update_env_guard("1", "proj", "/traefik-dynamic"));
+    }
 
     #[test]
     fn strip_jsonc_removes_full_line_comments() {
