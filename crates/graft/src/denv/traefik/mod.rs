@@ -22,7 +22,10 @@ use config::{
     traefik_service, write_systemd_unit, write_traefik_yml,
 };
 use routes::{normalize_branch, remove_routes, write_routes};
-use runner::{DockerRunner, SystemDockerRunner, run_checked};
+use runner::{
+    DockerRunner, GitBranchResolver, IpResolver, SystemDockerRunner, SystemGitBranchResolver,
+    SystemIpResolver, run_checked,
+};
 
 /// Returns `true` when all three Traefik env vars are present and `TRAEFIK_MANAGED` is `"1"`.
 fn routes_update_env_guard(managed: &str, project: &str, dynamic_dir: &str) -> bool {
@@ -60,7 +63,10 @@ pub fn execute_status() -> ExitCode {
 
 #[cfg_attr(coverage_nightly, coverage(off))]
 pub fn execute_routes_update() -> ExitCode {
-    run(cmd_routes_update())
+    run(cmd_routes_update(
+        &SystemIpResolver,
+        &SystemGitBranchResolver,
+    ))
 }
 
 #[cfg_attr(coverage_nightly, coverage(off))]
@@ -1117,32 +1123,73 @@ fn cmd_exec(docker: &dyn DockerRunner) -> anyhow::Result<()> {
     Ok(())
 }
 
-// Cycles 2-4 will add `?`-returning code, so the Result return is intentional.
-#[allow(clippy::unnecessary_wraps)]
-fn cmd_routes_update() -> anyhow::Result<()> {
-    let managed = std::env::var("TRAEFIK_MANAGED").unwrap_or_default();
-    let project = std::env::var("TRAEFIK_PROJECT").unwrap_or_default();
-    let dynamic_dir = std::env::var("TRAEFIK_DYNAMIC_DIR").unwrap_or_default();
+struct RoutesUpdateEnv<'a> {
+    managed: &'a str,
+    project: &'a str,
+    dynamic_dir: &'a str,
+    hostname: &'a str,
+    workspace: &'a str,
+}
 
-    if !routes_update_env_guard(&managed, &project, &dynamic_dir) {
+fn cmd_routes_update_inner(
+    env: &RoutesUpdateEnv<'_>,
+    ip_resolver: &dyn IpResolver,
+    branch_resolver: &dyn GitBranchResolver,
+) -> anyhow::Result<()> {
+    if !routes_update_env_guard(env.managed, env.project, env.dynamic_dir) {
         tracing::warn!(
             "TRAEFIK_MANAGED/TRAEFIK_PROJECT/TRAEFIK_DYNAMIC_DIR not set; skipping routes update"
         );
         return Ok(());
     }
 
-    let hostname = std::env::var("HOSTNAME").unwrap_or_default();
-    if hostname.is_empty() {
+    if env.hostname.is_empty() {
         tracing::warn!("HOSTNAME not set; skipping routes update");
         return Ok(());
     }
 
-    let _route_file =
-        routes::resolve_route_file(std::path::Path::new(&dynamic_dir), &project, &hostname);
+    let ip = ip_resolver.resolve()?;
+    if ip.is_empty() {
+        tracing::warn!("could not resolve container IP; skipping routes update");
+        return Ok(());
+    }
 
-    // TODO: Cycle 3 — IP resolution
+    let branch = branch_resolver.current_branch(env.workspace)?;
+
+    tracing::debug!(
+        project = %env.project,
+        hostname = %env.hostname,
+        ip = %ip,
+        branch = %branch,
+        "routes_update: resolved IP and branch"
+    );
+
     // TODO: Cycle 4 — write_routes integration
     Ok(())
+}
+
+fn cmd_routes_update(
+    ip_resolver: &dyn IpResolver,
+    branch_resolver: &dyn GitBranchResolver,
+) -> anyhow::Result<()> {
+    let managed = std::env::var("TRAEFIK_MANAGED").unwrap_or_default();
+    let project = std::env::var("TRAEFIK_PROJECT").unwrap_or_default();
+    let dynamic_dir = std::env::var("TRAEFIK_DYNAMIC_DIR").unwrap_or_default();
+    let hostname = std::env::var("HOSTNAME").unwrap_or_default();
+    let workspace = std::env::var("GIT_WORK_TREE")
+        .or_else(|_| std::env::var("PWD"))
+        .unwrap_or_else(|_| ".".to_owned());
+    cmd_routes_update_inner(
+        &RoutesUpdateEnv {
+            managed: &managed,
+            project: &project,
+            dynamic_dir: &dynamic_dir,
+            hostname: &hostname,
+            workspace: &workspace,
+        },
+        ip_resolver,
+        branch_resolver,
+    )
 }
 
 #[cfg_attr(coverage_nightly, coverage(off))]
@@ -1466,5 +1513,123 @@ mod tests {
         let env = "/tmp/tmux-1000/default,12345,0";
         let pane = TmuxPane::new(env, "%31");
         assert_eq!(pane.env_value(), env);
+    }
+
+    // --- Cycle 3: IpResolver + GitBranchResolver ---
+
+    struct MockIpResolver(anyhow::Result<String>);
+    impl runner::IpResolver for MockIpResolver {
+        fn resolve(&self) -> anyhow::Result<String> {
+            match &self.0 {
+                Ok(s) => Ok(s.clone()),
+                Err(e) => anyhow::bail!("{e}"),
+            }
+        }
+    }
+
+    struct MockBranchResolver(anyhow::Result<String>);
+    impl runner::GitBranchResolver for MockBranchResolver {
+        fn current_branch(&self, _workspace: &str) -> anyhow::Result<String> {
+            match &self.0 {
+                Ok(s) => Ok(s.clone()),
+                Err(e) => anyhow::bail!("{e}"),
+            }
+        }
+    }
+
+    fn env_all_set<'a>() -> RoutesUpdateEnv<'a> {
+        RoutesUpdateEnv {
+            managed: "1",
+            project: "testproj",
+            dynamic_dir: "/traefik-dynamic",
+            hostname: "abc123def456",
+            workspace: "/workspace",
+        }
+    }
+
+    #[test]
+    fn routes_update_inner_ok_with_valid_ip_and_branch() {
+        let result = cmd_routes_update_inner(
+            &env_all_set(),
+            &MockIpResolver(Ok("172.20.0.2".to_owned())),
+            &MockBranchResolver(Ok("main".to_owned())),
+        );
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn routes_update_inner_calls_ip_resolver() {
+        let result = cmd_routes_update_inner(
+            &env_all_set(),
+            &MockIpResolver(Err(anyhow::anyhow!("ip-resolver-called"))),
+            &MockBranchResolver(Ok("main".to_owned())),
+        );
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("ip-resolver-called")
+        );
+    }
+
+    #[test]
+    fn routes_update_inner_calls_branch_resolver() {
+        let result = cmd_routes_update_inner(
+            &env_all_set(),
+            &MockIpResolver(Ok("172.20.0.2".to_owned())),
+            &MockBranchResolver(Err(anyhow::anyhow!("branch-resolver-called"))),
+        );
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("branch-resolver-called")
+        );
+    }
+
+    #[test]
+    fn routes_update_inner_skips_when_ip_empty() {
+        let result = cmd_routes_update_inner(
+            &env_all_set(),
+            &MockIpResolver(Ok(String::new())),
+            &MockBranchResolver(Err(anyhow::anyhow!("should-not-be-called"))),
+        );
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn routes_update_inner_skips_when_guard_fails() {
+        let env = RoutesUpdateEnv {
+            managed: "0",
+            project: "testproj",
+            dynamic_dir: "/traefik-dynamic",
+            hostname: "abc123",
+            workspace: "/workspace",
+        };
+        let result = cmd_routes_update_inner(
+            &env,
+            &MockIpResolver(Err(anyhow::anyhow!("should-not-be-called"))),
+            &MockBranchResolver(Err(anyhow::anyhow!("should-not-be-called"))),
+        );
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn routes_update_inner_skips_when_hostname_empty() {
+        let env = RoutesUpdateEnv {
+            managed: "1",
+            project: "testproj",
+            dynamic_dir: "/traefik-dynamic",
+            hostname: "",
+            workspace: "/workspace",
+        };
+        let result = cmd_routes_update_inner(
+            &env,
+            &MockIpResolver(Err(anyhow::anyhow!("should-not-be-called"))),
+            &MockBranchResolver(Err(anyhow::anyhow!("should-not-be-called"))),
+        );
+        assert!(result.is_ok());
     }
 }
