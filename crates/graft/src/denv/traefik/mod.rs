@@ -1164,7 +1164,20 @@ fn cmd_routes_update_inner(
         "routes_update: resolved IP and branch"
     );
 
-    // TODO: Cycle 4 — write_routes integration
+    let dc = read_devcontainer(env.workspace)?;
+    if dc.ports.is_empty() {
+        tracing::warn!("no portsAttributes found in devcontainer.json; skipping routes update");
+        return Ok(());
+    }
+
+    write_routes(
+        env.hostname,
+        env.project,
+        &branch,
+        &ip,
+        &dc.ports,
+        Path::new(env.dynamic_dir),
+    )?;
     Ok(())
 }
 
@@ -1547,14 +1560,73 @@ mod tests {
         }
     }
 
+    fn make_workspace_with_ports(ports: &[&str]) -> tempfile::TempDir {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let dc_dir = dir.path().join(".devcontainer");
+        std::fs::create_dir_all(&dc_dir).expect("create .devcontainer");
+        let ports_json: String = ports
+            .iter()
+            .map(|p| format!("    \"{p}\": {{\"label\": \"{p}\"}}"))
+            .collect::<Vec<_>>()
+            .join(",\n");
+        let json = format!("{{\n  \"portsAttributes\": {{\n{ports_json}\n  }}\n}}");
+        std::fs::write(dc_dir.join("devcontainer.json"), json).expect("write devcontainer.json");
+        dir
+    }
+
     #[test]
     fn routes_update_inner_ok_with_valid_ip_and_branch() {
+        let ws = make_workspace_with_ports(&["8080"]);
+        let dyn_dir = tempfile::tempdir().expect("dynamic tempdir");
+        let env = RoutesUpdateEnv {
+            managed: "1",
+            project: "testproj",
+            dynamic_dir: dyn_dir.path().to_str().expect("path"),
+            hostname: "abc123def456789",
+            workspace: ws.path().to_str().expect("path"),
+        };
         let result = cmd_routes_update_inner(
-            &env_all_set(),
+            &env,
             &MockIpResolver(Ok("172.20.0.2".to_owned())),
             &MockBranchResolver(Ok("main".to_owned())),
         );
         assert!(result.is_ok());
+    }
+
+    #[test]
+    fn routes_update_inner_writes_yaml_with_correct_branch() {
+        let ws = make_workspace_with_ports(&["5080", "8080"]);
+        let dyn_dir = tempfile::tempdir().expect("dynamic tempdir");
+        let env = RoutesUpdateEnv {
+            managed: "1",
+            project: "testproj",
+            dynamic_dir: dyn_dir.path().to_str().expect("path"),
+            hostname: "abc123def456789",
+            workspace: ws.path().to_str().expect("path"),
+        };
+
+        let result = cmd_routes_update_inner(
+            &env,
+            &MockIpResolver(Ok("172.20.0.2".to_owned())),
+            &MockBranchResolver(Ok("feature-foo".to_owned())),
+        );
+        assert!(result.is_ok(), "cmd_routes_update_inner failed: {result:?}");
+
+        let expected_path = dyn_dir.path().join("testproj-abc123def456.yml");
+        assert!(
+            expected_path.exists(),
+            "YAML file not found: {}",
+            expected_path.display()
+        );
+
+        let content = std::fs::read_to_string(&expected_path).expect("read yaml");
+        assert!(
+            content.contains("feature-foo"),
+            "branch not in YAML: {content}"
+        );
+        assert!(content.contains("172.20.0.2"), "IP not in YAML: {content}");
+        assert!(content.contains("5080"), "port 5080 not in YAML: {content}");
+        assert!(content.contains("8080"), "port 8080 not in YAML: {content}");
     }
 
     #[test]
