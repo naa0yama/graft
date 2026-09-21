@@ -13,7 +13,7 @@ ARG MOLD_VERSION=v2.42.1
 
 # Rust tools
 ## renovate: datasource=github-releases packageName=mozilla/sccache versioning=semver automerge=true
-ARG SCCACHE_VERSION=v0.17.0
+ARG SCCACHE_VERSION=v0.18.0
 
 # retry dns and some http codes that might be transient errors
 ARG CURL_OPTS="-sfSL --retry 3 --retry-delay 2 --retry-connrefused"
